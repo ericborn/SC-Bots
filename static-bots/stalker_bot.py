@@ -8,11 +8,14 @@ import random
 import sc2
 from sc2 import Race, Difficulty
 from sc2.player import Bot, Computer
-from sc2.constants import AbilityId, PYLON, WARPGATE, STALKER, NEXUS, PROBE,
-CYBERNETICSCORE
+# Changed imports to be specific instead of *
+#from sc2.constants import *
+from sc2.constants import (AbilityId, PYLON, WARPGATE, STALKER, NEXUS, PROBE,
+CYBERNETICSCORE, GATEWAY, ASSIMILATOR, RESEARCH_WARPGATE, MORPH_WARPGATE, 
+BuffId)
 
+# Changed botname
 class StalkerBot(sc2.BotAI):
-
     # sets warpgate and proxy to false
     def __init__(self):
         self.warpgate_started = False
@@ -131,7 +134,7 @@ class StalkerBot(sc2.BotAI):
                     await self.do(nexus(AbilityId.EFFECT_CHRONOBOOSTENERGYCOST, 
                                         ccore))
 
-
+# Changed map to AbyssalReefLE
 def main():
     sc2.run_game(sc2.maps.get("AbyssalReefLE"), [
         Bot(Race.Protoss, StalkerBot()),
@@ -140,9 +143,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-#run_game(maps.get("AbyssalReefLE"), [
-#    Bot(Race.Protoss, SentdeBot()),
-#    Computer(Race.Terran, Difficulty.Easy)
-#], realtime=True)
