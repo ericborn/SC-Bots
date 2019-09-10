@@ -7,25 +7,31 @@ import random
 
 import sc2
 from sc2 import Race, Difficulty
-from sc2.constants import *
 from sc2.player import Bot, Computer
+from sc2.constants import AbilityId, PYLON, WARPGATE, STALKER, NEXUS, PROBE,
+CYBERNETICSCORE
 
-class WarpGateBot(sc2.BotAI):
+class StalkerBot(sc2.BotAI):
 
+    # sets warpgate and proxy to false
     def __init__(self):
         self.warpgate_started = False
         self.proxy_built = False
 
+    # creates a function to find the enemy start location
     def select_target(self, state):
         return self.enemy_start_locations[0]
 
     async def warp_new_units(self, proxy):
         for warpgate in self.units(WARPGATE).ready:
             abilities = await self.get_available_abilities(warpgate)
-            # all the units have the same cooldown anyway so let's just look at ZEALOT
-            if AbilityId.WARPGATETRAIN_ZEALOT in abilities:
+            
+            # finds the cooldown for creating stalkers
+            if AbilityId.WARPGATETRAIN_STALKER in abilities:
                 pos = proxy.position.to2.random_on_distance(4)
-                placement = await self.find_placement(AbilityId.WARPGATETRAIN_STALKER, pos, placement_step=1)
+                placement = await self.find_placement(
+                        AbilityId.WARPGATETRAIN_STALKER, pos, placement_step=1)
+                
                 if placement is None:
                     #return ActionResult.CantFindPlacementLocation
                     print("can't place")
@@ -54,7 +60,8 @@ class WarpGateBot(sc2.BotAI):
 
         elif self.units(PYLON).amount < 5 and not self.already_pending(PYLON):
             if self.can_afford(PYLON):
-                await self.build(PYLON, near=nexus.position.towards(self.game_info.map_center, 5))
+                await self.build(PYLON, near=nexus.position.towards(
+                                        self.game_info.map_center, 5))
 
 
         if self.units(PYLON).ready.exists:
@@ -62,9 +69,12 @@ class WarpGateBot(sc2.BotAI):
             pylon = self.units(PYLON).ready.random
             if self.units(GATEWAY).ready.exists:
                 if not self.units(CYBERNETICSCORE).exists:
-                    if self.can_afford(CYBERNETICSCORE) and not self.already_pending(CYBERNETICSCORE):
+                    if self.can_afford(CYBERNETICSCORE) and not ( 
+                    self.already_pending(CYBERNETICSCORE)):
                         await self.build(CYBERNETICSCORE, near=pylon)
-            if self.can_afford(GATEWAY) and self.units(WARPGATE).amount < 4 and self.units(GATEWAY).amount < 4:
+            if self.can_afford(GATEWAY) and (
+                    self.units(WARPGATE).amount < 4) and (
+                    self.units(GATEWAY).amount < 4):
                 await self.build(GATEWAY, near=pylon)
 
         for nexus in self.units(NEXUS).ready:
@@ -80,14 +90,16 @@ class WarpGateBot(sc2.BotAI):
                 if not self.units(ASSIMILATOR).closer_than(1.0, vg).exists:
                     await self.do(worker.build(ASSIMILATOR, vg))
 
-        if self.units(CYBERNETICSCORE).ready.exists and self.can_afford(RESEARCH_WARPGATE) and not self.warpgate_started:
+        if self.units(CYBERNETICSCORE).ready.exists and self.can_afford(
+                RESEARCH_WARPGATE) and not self.warpgate_started:
             ccore = self.units(CYBERNETICSCORE).ready.first
             await self.do(ccore(RESEARCH_WARPGATE))
             self.warpgate_started = True
 
         for gateway in self.units(GATEWAY).ready:
             abilities = await self.get_available_abilities(gateway)
-            if AbilityId.MORPH_WARPGATE in abilities and self.can_afford(AbilityId.MORPH_WARPGATE):
+            if AbilityId.MORPH_WARPGATE in abilities and self.can_afford(
+                    AbilityId.MORPH_WARPGATE):
                 await self.do(gateway(MORPH_WARPGATE))
 
         if self.proxy_built:
@@ -97,8 +109,11 @@ class WarpGateBot(sc2.BotAI):
             for vr in self.units(STALKER).ready.idle:
                 await self.do(vr.attack(self.select_target(self.state)))
 
-        if self.units(CYBERNETICSCORE).amount >= 1 and not self.proxy_built and self.can_afford(PYLON):
-            p = self.game_info.map_center.towards(self.enemy_start_locations[0], 20)
+        if self.units(CYBERNETICSCORE).amount >= 1 and not (
+                self.proxy_built) and (
+                self.can_afford(PYLON)):
+            p = self.game_info.map_center.towards(
+                    self.enemy_start_locations[0], 20)
             await self.build(PYLON, near=p)
             self.proxy_built = True
 
@@ -106,20 +121,28 @@ class WarpGateBot(sc2.BotAI):
             if not nexus.has_buff(BuffId.CHRONOBOOSTENERGYCOST):
                 abilities = await self.get_available_abilities(nexus)
                 if AbilityId.EFFECT_CHRONOBOOSTENERGYCOST in abilities:
-                    await self.do(nexus(AbilityId.EFFECT_CHRONOBOOSTENERGYCOST, nexus))
+                    await self.do(nexus(AbilityId.EFFECT_CHRONOBOOSTENERGYCOST, 
+                                        nexus))
         else:
             ccore = self.units(CYBERNETICSCORE).ready.first
             if not ccore.has_buff(BuffId.CHRONOBOOSTENERGYCOST):
                 abilities = await self.get_available_abilities(nexus)
                 if AbilityId.EFFECT_CHRONOBOOSTENERGYCOST in abilities:
-                    await self.do(nexus(AbilityId.EFFECT_CHRONOBOOSTENERGYCOST, ccore))
+                    await self.do(nexus(AbilityId.EFFECT_CHRONOBOOSTENERGYCOST, 
+                                        ccore))
 
 
 def main():
-    sc2.run_game(sc2.maps.get("(2)CatalystLE"), [
-        Bot(Race.Protoss, WarpGateBot()),
+    sc2.run_game(sc2.maps.get("AbyssalReefLE"), [
+        Bot(Race.Protoss, StalkerBot()),
         Computer(Race.Protoss, Difficulty.Easy)
-    ], realtime=False)
+    ], realtime=True)
 
 if __name__ == '__main__':
     main()
+
+
+#run_game(maps.get("AbyssalReefLE"), [
+#    Bot(Race.Protoss, SentdeBot()),
+#    Computer(Race.Terran, Difficulty.Easy)
+#], realtime=True)
