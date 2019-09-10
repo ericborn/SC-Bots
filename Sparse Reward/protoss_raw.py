@@ -131,19 +131,10 @@ class QLearningTable:
             self.q_table = self.q_table.append(pd.Series([0] * len(self.actions), index=self.q_table.columns, name=state))
 ##########
 
-
 class RawAgent(base_agent.BaseAgent):
   def __init__(self):
     super(RawAgent, self).__init__()
     self.base_top_left = None
-
-    self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
-        
-    self.previous_killed_unit_score = 0
-    self.previous_killed_building_score = 0
-    
-    self.previous_action = None
-    self.previous_state = None
 
   def get_my_units_by_type(self, obs, unit_type):
     return [unit for unit in obs.observation.raw_units
@@ -180,26 +171,6 @@ class RawAgent(base_agent.BaseAgent):
 
     zealots = self.get_my_units_by_type(obs, units.Protoss.Zealot)
     
-    unit_type = obs.observation['screen'][_UNIT_TYPE]
-
-    depot_y, depot_x = (unit_type == _TERRAN_SUPPLY_DEPOT).nonzero()
-    supply_depot_count = supply_depot_count = 1 if depot_y.any() else 0
-
-    barracks_y, barracks_x = (unit_type == _TERRAN_BARRACKS).nonzero()
-    barracks_count = 1 if barracks_y.any() else 0
-        
-    supply_limit = obs.observation['player'][4]
-    army_supply = obs.observation['player'][5]
-    
-    killed_unit_score = obs.observation['score_cumulative'][5]
-    killed_building_score = obs.observation['score_cumulative'][6]
-    
-    current_state = np.zeros(20)
-    current_state[0] = supply_depot_count
-    current_state[1] = barracks_count
-    current_state[2] = supply_limit
-    current_state[3] = army_supply
-    
     if len(pylons) == 0 and obs.observation.player.minerals >= 100:
       probes = self.get_my_units_by_type(obs, units.Protoss.Probe)
       if len(probes) > 0:
@@ -231,8 +202,57 @@ class RawAgent(base_agent.BaseAgent):
       x_offset = random.randint(-4, 4)
       y_offset = random.randint(-4, 4)
       return actions.RAW_FUNCTIONS.Attack_pt(
-          "now", zealot.tag, (attack_xy[0] + x_offset, attack_xy[1] + y_offset))
+         "now", zealot.tag, (attack_xy[0] + x_offset, attack_xy[1] + y_offset))
 
+    # This section contains code for giving rewards for killing units or
+    # buildings. needs to be updated for protoss and folded into current bot 
+    # step method
+#    supply_limit = obs.observation['player'][4]
+#    army_supply = obs.observation['player'][5]
+#    
+#    killed_unit_score = obs.observation['score_cumulative'][5]
+#    killed_building_score = obs.observation['score_cumulative'][6]
+#    
+#    ######!!!! Need up update to match protoss actions
+#    current_state = np.zeros(20)
+#    current_state[0] = supply_depot_count
+#    current_state[1] = barracks_count
+#    current_state[2] = supply_limit
+#    current_state[3] = army_supply
+#
+#    hot_squares = np.zeros(16)        
+#    enemy_y, enemy_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
+#    for i in range(0, len(enemy_y)):
+#        y = int(math.ceil((enemy_y[i] + 1) / 16))
+#        x = int(math.ceil((enemy_x[i] + 1) / 16))
+#        
+#        hot_squares[((y - 1) * 4) + (x - 1)] = 1
+#    
+#    if not self.base_top_left:
+#        hot_squares = hot_squares[::-1]
+#    
+#    for i in range(0, 16):
+#        current_state[i + 4] = hot_squares[i]
+#
+#    if self.previous_action is not None:
+#        reward = 0
+#            
+#        if killed_unit_score > self.previous_killed_unit_score:
+#            reward += KILL_UNIT_REWARD
+#                
+#        if killed_building_score > self.previous_killed_building_score:
+#            reward += KILL_BUILDING_REWARD
+#            
+#        self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
+#    
+#    rl_action = self.qlearn.choose_action(str(current_state))
+#    smart_action = smart_actions[rl_action]
+#    
+#    self.previous_killed_unit_score = killed_unit_score
+#    self.previous_killed_building_score = killed_building_score
+#    self.previous_state = current_state
+#    self.previous_action = rl_action
+#
     return actions.RAW_FUNCTIONS.no_op()
 
 
