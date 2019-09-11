@@ -118,17 +118,17 @@ class IronBot(sc2.BotAI):
         current_state[4] = self.supply_workers
 
         # # sets array with unit/building numbers
-        # current_state[5] = self.units(PYLON).amount
-        # current_state[6] = self.units(ASSIMILATOR).amount
-        # current_state[7] = self.units(GATEWAY).amount
-        # current_state[8] = self.units(STALKER).amount
-        # current_state[9] = self.units(VOIDRAY).amount
-        # current_state[10] = self.units(NEXUS).amount
+        current_state[5] = self.units(PYLON).amount
+        current_state[6] = self.units(ASSIMILATOR).amount
+        current_state[7] = self.units(GATEWAY).amount
+        current_state[8] = self.units(STALKER).amount
+        current_state[9] = self.units(VOIDRAY).amount
+        current_state[10] = self.units(NEXUS).amount
 
         # # sets array with resource numbers
-        # current_state[11] = self.minerals
-        # current_state[12] = self.vespene
-        # current_state[13] = self.geysers
+        current_state[11] = self.minerals
+        current_state[12] = self.vespene
+
 
         #### not sure if the bot should be able track total number of units and buildings killed, 
         # thats information a human player could certainly generalize at a high level
