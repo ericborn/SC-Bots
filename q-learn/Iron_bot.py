@@ -2,17 +2,18 @@
 """
 @author: Eric Born
 """
-
-import sc2
 import numpy as np
 import pandas as pd
 
+from pysc2.agents import base_agent
+
+import sc2
 from sc2 import run_game, maps, Race, Difficulty
 from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
-CYBERNETICSCORE, STALKER
-#from s2clientprotocol import score_pb2
+ CYBERNETICSCORE, STALKER, STARGATE, VOIDRAY
 import random
+#from s2clientprotocol import score_pb2
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class QLearningTable:
@@ -55,17 +56,26 @@ class QLearningTable:
             # append new state to q table
             self.q_table = self.q_table.append(pd.Series([0] * len(self.actions), index=self.q_table.columns, name=state))
 
+# Creates variables holding strings for bots actions
+ACTION_distribute_workers = 'distribute_workers'
+ACTION_build_workers = 'build_workers'
+ACTION_build_pylons = 'build_pylons'
+ACTION_build_assimilators = 'build_assimilators'
+ACTION_expand = 'expand'
+ACTION_offensive_force_buildings = 'offensive_force_buildings'
+ACTION_build_offensive_force= 'build_offensive_force'
+ACTION_attack = 'attack'
 
 # creates a list of actions the bot can choose from
 smart_actions = [
-    distribute_workers,
-    build_workers,
-    build_pylons,
-    build_assimilators,
-    expand,
-    offensive_force_buildings,
-    build_offensive_force,
-    attack
+    ACTION_distribute_workers,
+    ACTION_build_workers,
+    ACTION_build_pylons,
+    ACTION_build_assimilators,
+    ACTION_expand,
+    ACTION_offensive_force_buildings,
+    ACTION_build_offensive_force,
+    ACTION_attack
 ]
 
 #### Bots current issues:
@@ -107,18 +117,18 @@ class IronBot(sc2.BotAI):
         current_state[3] = self.supply_army
         current_state[4] = self.supply_workers
 
-        # sets array with unit/building numbers
-        current_state[5] = self.units(PYLON).amount
-        current_state[6] = self.units(ASSIMILATOR).amount
-        current_state[7] = self.units(GATEWAY).amount
-        current_state[8] = self.units(STALKER).amount
-        current_state[9] = self.units(VOIDRAY).amount
-        current_state[10] = self.units(NEXUS).amount
+        # # sets array with unit/building numbers
+        # current_state[5] = self.units(PYLON).amount
+        # current_state[6] = self.units(ASSIMILATOR).amount
+        # current_state[7] = self.units(GATEWAY).amount
+        # current_state[8] = self.units(STALKER).amount
+        # current_state[9] = self.units(VOIDRAY).amount
+        # current_state[10] = self.units(NEXUS).amount
 
-        # sets array with resource numbers
-        current_state[11] = self.minerals
-        current_state[12] = self.vespene
-        current_state[13] = self.geysers
+        # # sets array with resource numbers
+        # current_state[11] = self.minerals
+        # current_state[12] = self.vespene
+        # current_state[13] = self.geysers
 
         #### not sure if the bot should be able track total number of units and buildings killed, 
         # thats information a human player could certainly generalize at a high level
@@ -191,12 +201,13 @@ class IronBot(sc2.BotAI):
                     if self.can_afford(STARGATE) and not \
                     self.already_pending(STARGATE):
                         await self.build(STARGATE, near=pylon)
-
+    # added first if statement to check if gateway and cyber exist
     async def build_offensive_force(self):
-        for gw in self.units(GATEWAY).ready.noqueue:
-            if not self.units(STALKER).amount > self.units(VOIDRAY).amount:
-                if self.can_afford(STALKER) and self.supply_left > 0:
-                    await self.do(gw.train(STALKER))
+        if self.units(GATEWAY).ready.exists and self.units(CYBERNETICSCORE).ready.exists:
+            for gw in self.units(GATEWAY).ready.noqueue:
+                if not self.units(STALKER).amount > self.units(VOIDRAY).amount:
+                    if self.can_afford(STALKER) and self.supply_left > 0:
+                        await self.do(gw.train(STALKER))
 
         for sg in self.units(STARGATE).ready.noqueue:
             if self.can_afford(VOIDRAY) and self.supply_left > 0:
