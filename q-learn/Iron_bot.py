@@ -4,6 +4,8 @@
 """
 import numpy as np
 import pandas as pd
+import random
+import math
 
 from pysc2.agents import base_agent
 
@@ -12,8 +14,24 @@ from sc2 import run_game, maps, Race, Difficulty
 from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
  CYBERNETICSCORE, STALKER, STARGATE, VOIDRAY
-import random
+
+# may be an alternative way to find unit/building kills
 #from s2clientprotocol import score_pb2
+
+_NO_OP = actions.FUNCTIONS.no_op.id
+_SELECT_POINT = actions.FUNCTIONS.select_point.id
+_BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
+_BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
+_TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
+_SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+
+_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
+_UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
+_PLAYER_ID = features.SCREEN_FEATURES.player_id.index
+
+_PLAYER_SELF = 1
+_PLAYER_HOSTILE = 4
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class QLearningTable:
@@ -78,6 +96,12 @@ smart_actions = [
     ACTION_attack
 ]
 
+# Define rewards for killing units or buildings
+KILL_UNIT_REWARD = 0.2
+KILL_BUILDING_REWARD = 0.5
+SUPPLY_ARMY_REWARD = 0.2
+SUPPLY_WORKERS_REWARD = 0.05
+
 #### Bots current issues:
 # Too much expansion
 # Troops need to move out to protect expanded bases
@@ -89,13 +113,34 @@ class IronBot(sc2.BotAI):
 
         self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
         
-        #self.previous_killed_unit_score = 0
-        #self.previous_killed_building_score = 0
+        # These variables are initalized to allow the q-learning to keep track of
+        # various states that are used for scoring its performance and actions previously taken
         
+        # Set previous score categories to 0
+        self.previous_killed_unit_score = 0
+        self.previous_killed_building_score = 0
+
+        # Set previous troop/worker categories to 0
+        self.previous_supply_army = 0
+        self.previous_supply_workers = 0
+        
+        # previous state and action set to none
         self.previous_action = None
         self.previous_state = None
+        
+    def transformDistance(self, x, x_distance, y, y_distance):
+        if not self.base_top_left:
+            return [x - x_distance, y - y_distance]
+        
+        return [x + x_distance, y + y_distance]
+    
+    def transformLocation(self, x, y):
+        if not self.base_top_left:
+            return [64 - x, 64 - y]
+        
+        return [x, y]
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration, obs):
         self.iteration = iteration
         await self.distribute_workers()
         await self.build_workers()
@@ -106,9 +151,14 @@ class IronBot(sc2.BotAI):
         await self.build_offensive_force()
         await self.attack()
 
+        player_y, player_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
+        self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
+        
+        unit_type = obs.observation['screen'][_UNIT_TYPE]
+
         # updated after every action???
         # creates empty np array to store current states
-        current_state = np.zeros(20)
+        current_state = np.zeros(13)
 
         # sets array with supply numbers
         current_state[0] = self.supply_cap
@@ -129,21 +179,65 @@ class IronBot(sc2.BotAI):
         current_state[11] = self.minerals
         current_state[12] = self.vespene
 
+        #print(current_state)
 
         #### not sure if the bot should be able track total number of units and buildings killed, 
         # thats information a human player could certainly generalize at a high level
         # but impossible to track at 100% certainty
         # old method was obs, but unsure how that works
         # obs was brought into the step method and then referenced for finding unit and score amounts
-        #killed_unit_score = obs.observation['score_cumulative'][5]
-        #killed_building_score = obs.observation['score_cumulative'][6]
+        killed_unit_score = obs.observation['score_cumulative'][5]
+        killed_building_score = obs.observation['score_cumulative'][6]
+        current_supply_army = self.supply_army
+        current_supply_workers = self.supply_workers
 
-        # New method
-        #current_state[14] = units
-        #current_state[15] = buildings
+        # creates a 4x4 grid to allow enemy positions to be remembered 
+        hot_squares = np.zeros(16)        
+        enemy_y, enemy_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
 
-        print(current_state)
+        for i in range(0, len(enemy_y)):
+            y = int(math.ceil((enemy_y[i] + 1) / 16))
+            x = int(math.ceil((enemy_x[i] + 1) / 16))
+            hot_squares[((y - 1) * 4) + (x - 1)] = 1
         
+        if not self.base_top_left:
+            hot_squares = hot_squares[::-1]
+        
+        for i in range(0, 16):
+            current_state[i + 4] = hot_squares[i]
+
+        # resets reward back to 0
+        if self.previous_action is not None:
+            reward = 0
+
+            # adds reward if current killed_unit_score is greater than previous score
+            if killed_unit_score > self.previous_killed_unit_score:
+                reward += KILL_UNIT_REWARD
+            
+            # same but for destroyed buildings        
+            if killed_building_score > self.previous_killed_building_score:
+                reward += KILL_BUILDING_REWARD
+            
+            # score for growing the army
+            if current_state[3] > self.previous_supply_army:
+                reward += SUPPLY_ARMY_REWARD
+
+            # score for growing the worker pool
+            if current_state[4] > self.previous_supply_workers:
+                reward += SUPPLY_WORKERS_REWARD
+
+            # qlearning based upon previous state, the previous action taken, current reward amount and current state
+            self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
+        
+        rl_action = self.qlearn.choose_action(str(current_state))
+        smart_action = smart_actions[rl_action]
+        
+        self.previous_killed_unit_score = killed_unit_score
+        self.previous_killed_building_score = killed_building_score
+        self.previous_supply_army = current_supply_army
+        self.previous_supply_workers = current_supply_workers
+        self.previous_state = current_state
+        self.previous_action = rl_action
 
     async def build_workers(self):
         if (len(self.units(NEXUS)) * 16) > len(self.units(PROBE)) and \
@@ -201,6 +295,7 @@ class IronBot(sc2.BotAI):
                     if self.can_afford(STARGATE) and not \
                     self.already_pending(STARGATE):
                         await self.build(STARGATE, near=pylon)
+    
     # added first if statement to check if gateway and cyber exist
     async def build_offensive_force(self):
         if self.units(GATEWAY).ready.exists and self.units(CYBERNETICSCORE).ready.exists:
