@@ -129,7 +129,7 @@ smart_actions = [
 # Troops need to move out to protect expanded bases
 # Put 4 nexuses right next to each other
 # wont target troops repairing over buildings
-score_data = np.zeros(10)
+score_data = np.zeros(12)
 
 class BinaryBot(sc2.BotAI):
     def __init__(self):
@@ -148,37 +148,27 @@ class BinaryBot(sc2.BotAI):
         print('--- on_end called ---')
         result = str(game_result)
         if result == 'Result.Defeat':
-            score_data[9] = -1
-            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))), np.array(score_data))
+            score_data[11] = -1
+            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
+                    np.array(score_data))
             print('loser', game_result)
         
         elif result == 'Result.Victory':
-            score_data[9] = 1
-            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))), np.array(score_data))
+            score_data[11] = 1
+            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
+                    np.array(score_data))
             print('winner', game_result)
         
         else:
-            score_data[9] = 0
-            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))), np.array(score_data))
+            score_data[11] = 0
+            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
+                    np.array(score_data))
             print('draw?', game_result)
-
-    # def transformDistance(self, x, x_distance, y, y_distance):
-    #     if not self.base_top_left:
-    #         return [x - x_distance, y - y_distance]
-
-    #     return [x + x_distance, y + y_distance]
-
-    # def transformLocation(self, x, y):
-    #     if not self.base_top_left:
-    #         return [64 - x, 64 - y]
-
-    #     return [x, y]
     
+    # This is the function that basically moves through frames of the game
     async def on_step(self, iteration):
         self.iteration = iteration
-        #SCORE = self.state.score
-        #print(SCORE)
-        
+
         await self.distribute_workers()
         await self.build_workers()
         await self.build_pylons()
@@ -201,7 +191,7 @@ class BinaryBot(sc2.BotAI):
         if score_data[2] < self.supply_workers:
             score_data[2] = self.supply_workers
 
-        # structures
+        # built structures
         if score_data[3] < self.units(PYLON).amount:
             score_data[3] = self.units(PYLON).amount
 
@@ -219,6 +209,13 @@ class BinaryBot(sc2.BotAI):
 
         if score_data[8] < self.units(NEXUS).amount:
             score_data[8] = self.units(NEXUS).amount
+
+        # Destroyed buildings and units
+        if score_data[9] < self.state.score.killed_value_structures:
+            score_data[9] = self.state.score.killed_value_structures
+
+        if score_data[10] < self.state.score.killed_value_units:
+            score_data[10] = self.state.score.killed_value_units
 
     # TODO Convert all actions into smart actions
     # computer randomly chooses between these
@@ -318,22 +315,9 @@ class BinaryBot(sc2.BotAI):
                     for s in self.units(UNIT).idle:
                         await self.do(s.attack(
                                 random.choice(self.known_enemy_units)))
-# def main():
-#     g = sc2.main._host_game(
-#         sc2.maps.get('Abyssal Reef LE'), [
-#         Bot(Race.Protoss, BinaryBot()),
-#         Computer(Race.Terran, Difficulty.Easy)
-#         ], realtime=False)
-
-#     result = asyncio.get_event_loop().run_until_complete(g)
-#     print('im the print result', result)
-#     return(result)
-
-# if __name__ == '__main__':
-#     main()
 
 # TODO Create output of final score_data array and match outcome
 run_game(maps.get("AbyssalReefLE"), [
     Bot(Race.Protoss, BinaryBot()),
-    Computer(Race.Terran, Difficulty.Hard)
+    Computer(Race.Terran, Difficulty.Easy)
     ], realtime=False)
