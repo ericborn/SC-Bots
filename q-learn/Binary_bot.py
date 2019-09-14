@@ -316,8 +316,11 @@ class BinaryBot(sc2.BotAI):
                         await self.do(s.attack(
                                 random.choice(self.known_enemy_units)))
 
-# TODO Create output of final score_data array and match outcome
-run_game(maps.get("AbyssalReefLE"), [
-    Bot(Race.Protoss, BinaryBot()),
-    Computer(Race.Terran, Difficulty.Easy)
-    ], realtime=False)
+def main():
+    run_game(maps.get("AbyssalReefLE"), [
+        Bot(Race.Protoss, BinaryBot()),
+        Computer(Race.Terran, Difficulty.Easy)
+        ], realtime=False)
+
+if __name__ == '__main__':
+    main()
