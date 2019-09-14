@@ -8,6 +8,7 @@ import pandas as pd
 import random
 import math
 import time
+import asyncio
 
 # pysc2 libraries
 from pysc2.agents import base_agent
@@ -38,7 +39,6 @@ _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
 
 _PLAYER_SELF = 1
 _PLAYER_HOSTILE = 4
-
 
 # Stolen from
 # https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
@@ -109,9 +109,7 @@ smart_actions = [
     ACTION_attack
 ]
 
-# creates empty np array to store 9 game stats
-# and the overall game outcome
-game_data = np.zeros(10)
+
 
 # units_destroyed = 0
 
@@ -131,36 +129,38 @@ game_data = np.zeros(10)
 # Troops need to move out to protect expanded bases
 # Put 4 nexuses right next to each other
 # wont target troops repairing over buildings
-
+score_data = np.zeros(10)
 
 class BinaryBot(sc2.BotAI):
     def __init__(self):
         self.ITERATIONS_PER_MINUTE = 500
         self.MAX_WORKERS = 200
 
-        #game_data[9] = self.on_end
+        # creates empty np array to store 9 game stats
+        # and the overall game outcome
+        #self.score_data = np.zeros(10)
+
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
     # TODO Fix implementation of saving this out at game end
     # game outcome will be updated at the end of the game
-    # def on_end(self, game_result):
-    #     print('--- on_end called ---')
-    #     print(game_result)
-
-
-    # def on_end(self, game_result):
-    #     print(game_result)
-    #     if game_result == Result.Defeat:
-    #         game_data[9] = -1
-
-    #     elif game_result == Result.Victory:
-    #         game_data[9] = 1
-
-    #     else:
-    #         game_data[9] = 0
-
-    #     print(game_data)
-    #     np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))), np.array(game_data))
+    def on_end(self, game_result):
+        print('--- on_end called ---')
+        result = str(game_result)
+        if result == 'Result.Defeat':
+            score_data[9] = -1
+            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))), np.array(score_data))
+            print('loser', game_result)
+        
+        elif result == 'Result.Victory':
+            score_data[9] = 1
+            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))), np.array(score_data))
+            print('winner', game_result)
+        
+        else:
+            score_data[9] = 0
+            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))), np.array(score_data))
+            print('draw?', game_result)
 
     # def transformDistance(self, x, x_distance, y, y_distance):
     #     if not self.base_top_left:
@@ -173,9 +173,12 @@ class BinaryBot(sc2.BotAI):
     #         return [64 - x, 64 - y]
 
     #     return [x, y]
-
+    
     async def on_step(self, iteration):
         self.iteration = iteration
+        #SCORE = self.state.score
+        #print(SCORE)
+        
         await self.distribute_workers()
         await self.build_workers()
         await self.build_pylons()
@@ -184,41 +187,38 @@ class BinaryBot(sc2.BotAI):
         await self.offensive_force_buildings()
         await self.build_offensive_force()
         await self.attack()
-
+        
         # checks to see if the value has increased, if so records new value
         # supplies
+        if score_data[0] < self.supply_cap:
+            score_data[0] = self.supply_cap
 
         # TODO consider using a ratio of supply workers to supply army
         # instead of just totals
-        if game_data[0] < self.supply_cap:
-            game_data[0] = self.supply_cap
+        if score_data[1] < self.supply_army:
+            score_data[1] = self.supply_army
 
-        if game_data[1] < self.supply_army:
-            game_data[1] = self.supply_army
-
-        if game_data[2] < self.supply_workers:
-            game_data[2] = self.supply_workers
+        if score_data[2] < self.supply_workers:
+            score_data[2] = self.supply_workers
 
         # structures
-        if game_data[3] < self.units(PYLON).amount:
-            game_data[3] = self.units(PYLON).amount
+        if score_data[3] < self.units(PYLON).amount:
+            score_data[3] = self.units(PYLON).amount
 
-        if game_data[4] < self.units(ASSIMILATOR).amount:
-            game_data[4] = self.units(ASSIMILATOR).amount
+        if score_data[4] < self.units(ASSIMILATOR).amount:
+            score_data[4] = self.units(ASSIMILATOR).amount
 
-        if game_data[5] < self.units(GATEWAY).amount:
-            game_data[5] = self.units(GATEWAY).amount
+        if score_data[5] < self.units(GATEWAY).amount:
+            score_data[5] = self.units(GATEWAY).amount
 
-        if game_data[6] < self.units(STALKER).amount:
-            game_data[6] = self.units(STALKER).amount
+        if score_data[6] < self.units(STALKER).amount:
+            score_data[6] = self.units(STALKER).amount
 
-        if game_data[7] < self.units(VOIDRAY).amount:
-            game_data[7] = self.units(VOIDRAY).amount
+        if score_data[7] < self.units(VOIDRAY).amount:
+            score_data[7] = self.units(VOIDRAY).amount
 
-        if game_data[8] < self.units(NEXUS).amount:
-            game_data[8] = self.units(NEXUS).amount
-
-
+        if score_data[8] < self.units(NEXUS).amount:
+            score_data[8] = self.units(NEXUS).amount
 
     # TODO Convert all actions into smart actions
     # computer randomly chooses between these
@@ -318,13 +318,21 @@ class BinaryBot(sc2.BotAI):
                     for s in self.units(UNIT).idle:
                         await self.do(s.attack(
                                 random.choice(self.known_enemy_units)))
+# def main():
+#     g = sc2.main._host_game(
+#         sc2.maps.get('Abyssal Reef LE'), [
+#         Bot(Race.Protoss, BinaryBot()),
+#         Computer(Race.Terran, Difficulty.Easy)
+#         ], realtime=False)
 
-# TODO Create output of final game_data array and match outcome
-print('im on_end', sc2.BotAI.on_end())
+#     result = asyncio.get_event_loop().run_until_complete(g)
+#     print('im the print result', result)
+#     return(result)
 
-#print('im result', result)
-#logging.info(f"Result for player {player_id} - {player.name if player.name else str(player)}: {result._name_}")
+# if __name__ == '__main__':
+#     main()
 
+# TODO Create output of final score_data array and match outcome
 run_game(maps.get("AbyssalReefLE"), [
     Bot(Race.Protoss, BinaryBot()),
     Computer(Race.Terran, Difficulty.Hard)
