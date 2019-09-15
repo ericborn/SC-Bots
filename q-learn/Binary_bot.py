@@ -8,6 +8,7 @@ import pandas as pd
 import random
 import math
 import time
+import csv
 import asyncio
 
 # pysc2 libraries
@@ -141,30 +142,39 @@ class BinaryBot(sc2.BotAI):
         #self.score_data = np.zeros(10)
 
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
+    # Create a function to write the result to a csv
+    def write_csv(self, game_result):
+        with open('record.csv','a', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(str(game_result))
 
     # TODO Fix implementation of saving this out at game end
     # game outcome will be updated at the end of the game
     def on_end(self, game_result):
-        print('--- on_end called ---')
+        #print('--- on_end called ---')
         result = str(game_result)
+        
         if result == 'Result.Defeat':
             score_data[11] = -1
+            self.write_csv(-1)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
-            print('loser', game_result)
+            #print('loser', game_result)
         
         elif result == 'Result.Victory':
             score_data[11] = 1
+            self.write_csv(1)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
-            print('winner', game_result)
+            #print('winner', game_result)
         
         else:
             score_data[11] = 0
+            self.write_csv(0)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
-            print('draw?', game_result)
-    
+            #print('draw', game_result)
+
     # This is the function that basically moves through frames of the game
     async def on_step(self, iteration):
         self.iteration = iteration
