@@ -156,7 +156,7 @@ class BinaryBot(sc2.BotAI):
         
         if result == 'Result.Defeat':
             score_data[11] = -1
-            self.write_csv(-1)
+            self.write_csv(str(-1))
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
             #print('loser', game_result)
