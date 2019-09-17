@@ -28,6 +28,8 @@ from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
 
 HEADLESS = True
 
+print(os.path.abspath("."))
+
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
@@ -145,10 +147,10 @@ class BinaryBot(sc2.BotAI):
 
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
     # Create a function to write the result to a csv
-    def write_csv(self, game_result):
-        with open('record.csv','a', newline='') as csvfile:
-                #writer = csv.writer(csvfile)
-                writer.writerow(str(game_result))
+    # def write_csv(self, game_result):
+    #     with open('record.csv','a', newline='') as csvfile:
+    #             #writer = csv.writer(csvfile)
+    #             writer.writerow(str(game_result))
 
     # TODO Fix implementation of saving this out at game end
     # game outcome will be updated at the end of the game
