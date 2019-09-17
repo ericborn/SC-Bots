@@ -161,21 +161,21 @@ class BinaryBot(sc2.BotAI):
         if result == 'Result.Defeat':
             score_data[11] = -1
             #self.write_csv(str(-1))
-            np.save("home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
+            np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
             #print('loser', game_result)
 
         elif result == 'Result.Victory':
             score_data[11] = 1
             #self.write_csv(1)
-            np.save("home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
+            np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
             #print('winner', game_result)
 
         else:
             score_data[11] = 0
             #self.write_csv(0)
-            np.save("home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
+            np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
             #print('draw', game_result)
 
