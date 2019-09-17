@@ -9,6 +9,7 @@ import random
 import math
 import time
 import csv
+import os
 import asyncio
 
 # pysc2 libraries
@@ -23,8 +24,9 @@ from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
  CYBERNETICSCORE, STALKER, STARGATE, VOIDRAY
 
-# may be an alternative way to find unit/building kills
-# from s2clientprotocol import score_pb2
+#os.environ["SC2PATH"] = r'C:/Users/TomBrody/Desktop/School/767 ML/StarCraftII'
+
+HEADLESS = True
 
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
