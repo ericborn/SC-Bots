@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 @author: Eric Born
+Developed a bot that plays at the Protoss race
+Choses a random difficulty between 0-9 then launches SC2
+and plays against the built-in AI
+
+Keeps track 12 attributes of the games progress and writes the results
+out to a numpy array file
+Also appends the outcome of the match to a csv file. 
+-1 for loss, 0 for tie, 1 for win
 """
 # general libraries
 import numpy as np
@@ -24,26 +32,7 @@ from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
  CYBERNETICSCORE, STALKER, STARGATE, VOIDRAY
 
-#os.environ["SC2PATH"] = r'C:/Users/TomBrody/Desktop/School/767 ML/StarCraftII'
-
-HEADLESS = True
-
-_NO_OP = actions.FUNCTIONS.no_op.id
-_SELECT_POINT = actions.FUNCTIONS.select_point.id
-_BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
-_BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
-_TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
-_SELECT_ARMY = actions.FUNCTIONS.select_army.id
-_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
-
-_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
-_UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
-_PLAYER_ID = features.SCREEN_FEATURES.player_id.index
-
-_PLAYER_SELF = 1
-_PLAYER_HOSTILE = 4
-
-# Stolen from
+# Q learning system found here:
 # https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class QLearningTable:
     def __init__(self, actions, learning_rate=0.01,
@@ -113,7 +102,7 @@ smart_actions = [
 ]
 
 
-
+# possible rewards or counters for the learning system
 # units_destroyed = 0
 
 # Define rewards for killing units or buildings
@@ -130,54 +119,51 @@ smart_actions = [
 # Bots current issues:
 # Too much expansion
 # Troops need to move out to protect expanded bases
-# Put 4 nexuses right next to each other
-# wont target troops repairing over buildings
+# sometimes creates multiple nexuses right next to each other
+# wont target troops repairing buildings
+
+# creates empty np array to store game stats
+# and the overall game outcome
 score_data = np.zeros(12)
 
 class BinaryBot(sc2.BotAI):
     def __init__(self):
         self.ITERATIONS_PER_MINUTE = 500
         self.MAX_WORKERS = 200
-
-        # creates empty np array to store 9 game stats
-        # and the overall game outcome
-        #self.score_data = np.zeros(10)
-
+        
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
+
     # Create a function to write the result to a csv
     def write_csv(self, game_result):
         with open('record.csv','a', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(str(game_result))
 
-    # TODO Fix implementation of saving this out at game end
-    # game outcome will be updated at the end of the game
     def on_end(self, game_result):
-        #print('--- on_end called ---')
         result = str(game_result)
         
+        # Defeat
         if result == 'Result.Defeat':
             score_data[11] = -1
             self.write_csv(str(-1))
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
-            #print('loser', game_result)
         
+        # Win
         elif result == 'Result.Victory':
             score_data[11] = 1
             self.write_csv(1)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
-            #print('winner', game_result)
         
+        # Tie
         else:
             score_data[11] = 0
             self.write_csv(0)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
-            #print('draw', game_result)
 
-    # This is the function that basically moves through frames of the game
+    # This is the function steps forward and is called through each frame of the game
     async def on_step(self, iteration):
         self.iteration = iteration
 
@@ -230,7 +216,7 @@ class BinaryBot(sc2.BotAI):
             score_data[10] = self.state.score.killed_value_units
 
     # TODO Convert all actions into smart actions
-    # computer randomly chooses between these
+    # setup random selection bot to pick from these
     # ?? Possibly create a counter to record the number each action is taken ??
     async def build_workers(self):
         if (len(self.units(NEXUS)) * 16) > len(self.units(PROBE)) and \
@@ -267,7 +253,6 @@ class BinaryBot(sc2.BotAI):
             await self.expand_now()
 
     async def offensive_force_buildings(self):
-        # print(self.iteration / self.ITERATIONS_PER_MINUTE)
         if self.units(PYLON).ready.exists:
             pylon = self.units(PYLON).ready.random
 
@@ -290,7 +275,6 @@ class BinaryBot(sc2.BotAI):
                        self.already_pending(STARGATE):
                         await self.build(STARGATE, near=pylon)
 
-    # added first if statement to check if gateway and cyber exist
     async def build_offensive_force(self):
         if self.units(GATEWAY).ready.exists and \
            self.units(CYBERNETICSCORE).ready.exists:
@@ -312,7 +296,6 @@ class BinaryBot(sc2.BotAI):
             return self.enemy_start_locations[0]
 
     async def attack(self):
-        # {UNIT: [n to fight, n to defend]}
         aggressive_units = {STALKER: [15, 5],
                             VOIDRAY: [8, 3]}
 
