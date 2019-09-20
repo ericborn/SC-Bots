@@ -353,6 +353,18 @@ class BinaryBot(sc2.BotAI):
     #         else:
     #             return self.enemy_start_locations[0]
 
+# dict holding count of actions
+# action_count{
+# attack:0
+# assimilators:0
+# offensive_force:0
+# nothing:0
+# workers:0
+# pylons:0
+# expand:0
+# buildings:0
+#}
+
     # Action 1 - Attack
     async def attack(self):
         if len(self.known_enemy_structures) > 0:
