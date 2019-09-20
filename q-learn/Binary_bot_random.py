@@ -31,8 +31,11 @@ from pysc2.env import sc2_env
 import sc2
 from sc2 import run_game, maps, Race, Difficulty
 from sc2.player import Bot, Computer
-from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, GATEWAY, \
- CYBERNETICSCORE, STALKER, STARGATE, VOIDRAY
+from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, ROBOT, \
+ CYBERNETICSCORE, FLEETBEACON, GATEWAY, ROBOTICSBAY, ROBOTICSFACILITY, STARGATE, \
+ ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS, CARRIER
+
+ 
 
 # Q learning system found here:
 # https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
@@ -133,21 +136,31 @@ smart_actions = [
     ACTION_OFFENSIVE_FORCE_BUILDINGS
 ]
 
+# building indicators, used to check if units can be created
+# Flipped to a 1 if they exist
+GATEWAY_IND = 0
+CYBERCORE_IND = 0
+ROBOFACILITY_IND = 0
+STARGATE_IND = 0
+ROBOBAY_IND = 0
+
+# units unlocked by the following buildings
+# gateway - ZEALOT
+# cyber core - STALKER, ADEPT
+# robo facility - IMMORTAL
+# stargate - VOIDRAY
+# robo bay - COLOSSUS
 unit_list = [
-    #gateway
-    ZEALOT,
-    #cyber core
-    STALKER,
-    ADEPT,
-    #robo facility
-    IMMORTAL,
-    # stargate
-    VOIDRAY,
-    # robo bay
-    COLOSSUS,
-    # Flight Beacon
-    CARRIER,
+    None,
+    'ZEALOT',
+    'STALKER',
+    'ADEPT',
+    'IMMORTAL',
+    'VOIDRAY',
+    'COLOSSUS',
 ]
+
+unit_choice = ''
 
 # possible rewards or counters for the learning system
 # units_destroyed = 0
@@ -224,6 +237,32 @@ class BinaryBot(sc2.BotAI):
         await self.expand()
         await self.offensive_force_buildings()
 
+        
+        if self.units(GATEWAY).ready.exists:
+            GATEWAY_IND = 1
+        else:
+            GATEWAY_IND = 0
+
+        if self.units().ready.exists:
+            CYBERCORE_IND = 1
+        else:
+            CYBERCORE_IND = 0
+
+        if self.units(ROBOFACILITY).ready.exists:
+            ROBOFACILITY_IND = 1
+        else:
+            ROBOFACILITY_IND = 0
+
+        if self.units().ready.exists:
+            STARGATE_IND = 1
+        else:
+            STARGATE_IND = 0
+
+        if self.units().ready.exists:
+            ROBOBAY_IND = 1
+        else:
+            ROBOBAY_IND = 0
+
         # TODO 
         # May need to record this data every so many steps throughout the game
         # instead of just once at the end
@@ -275,33 +314,33 @@ class BinaryBot(sc2.BotAI):
         
         #rl_action = self.qlearn.choose_action(str(current_state))
 
-        if smart_actions == 'attack'
+        if choice == 'attack':
             self.attack()
 
-        elif smart_actions == 'build_assimilators'
+        elif choice == 'build_assimilators':
             self.build_assimilators
 
-        elif smart_actions == 'build_offensive_force'
+        elif choice == 'build_offensive_force':
             self.build_offensive_force
 
-        elif smart_actions == 'build_pylons'
+        elif choice == 'build_pylons':
             self.build_pylons
 
-        elif smart_actions == 'build_workers'
+        elif choice == 'build_workers':
             self.build_workers
 
-        elif smart_actions == 'distribute_workers'
+        elif choice == 'distribute_workers':
             self.distribute_workers
 
-        elif smart_actions == 'nothing'
+        elif choice == 'nothing':
             self.do_nothing
 
-        elif smart_actions == 'expand'
+        elif choice == 'expand':
             self.expand
 
-        elif smart_actions == 'offensive_force_buildings'
+        elif choice == 'offensive_force_buildings':
             self.offensive_force_buildings
-    
+
     # rolled into the attack action instead
     # def find_target(self, state):
     #         if len(self.known_enemy_units) > 0:
@@ -337,41 +376,57 @@ class BinaryBot(sc2.BotAI):
                                                 1.0, vaspene).exists:
                     await self.do(worker.build(ASSIMILATOR, vaspene))
 
-unit_list = [
-    #gateway
-    ZEALOT,
-    #cyber core
-    STALKER,
-    ADEPT,
-    #robo facility
-    IMMORTAL,
-    # stargate
-    VOIDRAY,
-    # robo bay
-    COLOSSUS,
-    # Flight Beacon
-    CARRIER,
-]
-    
     # TODO
     # May need to save for output what types of units its creating for learning purposes
     # Also could limit it as was done by others
     # Action 3 - build offensive force
     async def build_offensive_force(self):
-        
-        
-        if self.units(GATEWAY).ready.exists and \
-           self.units(CYBERNETICSCORE).ready.exists:
-            
-            # for gw in self.units(GATEWAY).ready.noqueue:
-            #     if not self.units(STALKER).amount > self.units(VOIDRAY).amount:
-            #         if self.can_afford(STALKER) and self.supply_left > 0:
-            #             await self.do(gw.train(STALKER))
+        # random choice of what unit to build
+        # limited by the buildings that unlock the unit being built
+        if ROBOBAY_IND == 1 and ROBOFACILITY_IND == 1:
+            unit_choice = unit_list[random.randint(1, 6)]
 
-        for sg in self.units(STARGATE).ready.noqueue:
-            if self.can_afford(VOIDRAY) and self.supply_left > 0:
-                await self.do(sg.train(VOIDRAY))
+        elif ROBOFACILITY_IND == 1 and STARGATE_IND == 1:
+            unit_choice = unit_list[random.randint(1, 5)]
 
+        elif ROBOFACILITY_IND == 1 and STARGATE_IND == 0:
+            unit_choice = unit_list[random.randint(1, 4)]
+
+        elif CYBERCORE_IND == 1:
+            unit_choice = unit_list[random.randint(1, 3)]
+
+        elif GATEWAY_IND == 1:
+            unit_choice = unit_list[1]
+
+        else:
+            unit_choice = unit_list[0]
+
+        if unit_choice == 1 and self.can_afford(unit_choice) and self.supply_left >= 2:
+            for gw in self.units(GATEWAY).ready.noqueue:
+                await self.do(gw.train(ZEALOT))
+        
+        elif unit_choice == 2 and self.can_afford(unit_choice) and self.supply_left >= 2:
+            for gw in self.units(GATEWAY).ready.noqueue:
+                await self.do(gw.train(STALKER))
+
+        elif unit_choice == 3 and self.can_afford(unit_choice) and self.supply_left >= 2:
+            for gw in self.units(GATEWAY).ready.noqueue:
+                await self.do(gw.train(ADEPT))
+
+        elif unit_choice == 4 and self.can_afford(unit_choice) and self.supply_left >= 4:
+            for gw in self.units(ROBOTICSFACILITY).ready.noqueue:
+                await self.do(gw.train(IMMORTAL))
+
+        elif unit_choice == 5 and self.can_afford(unit_choice) and self.supply_left >= 4:
+            for gw in self.units(STARGATE).ready.noqueue:
+                await self.do(gw.train(VOIDRAY))
+
+        elif unit_choice == 6 and self.can_afford(unit_choice) and self.supply_left >= 6:
+            for gw in self.units(ROBOTICSFACILITY).ready.noqueue:
+                await self.do(gw.train(COLOSSUS))
+
+        else:
+            break
 
     async def do_nothing(self):
         if self.iteration > self.do_something_after:
