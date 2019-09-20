@@ -32,7 +32,7 @@ import sc2
 from sc2 import run_game, maps, Race, Difficulty
 from sc2.player import Bot, Computer
 from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, ROBOT, \
- CYBERNETICSCORE, FLEETBEACON, GATEWAY, ROBOTICSBAY, ROBOTICSFACILITY, STARGATE, \
+ CYBERNETICSCORE, GATEWAY, ROBOTICSBAY, ROBOTICSFACILITY, STARGATE, \
  ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS, CARRIER
 
  
@@ -236,29 +236,30 @@ class BinaryBot(sc2.BotAI):
         await self.do_nothing()
         await self.expand()
         await self.offensive_force_buildings()
-
         
+        # updates variables that indicate if a building exists
+        # used to check if a unit can be built
         if self.units(GATEWAY).ready.exists:
             GATEWAY_IND = 1
         else:
             GATEWAY_IND = 0
 
-        if self.units().ready.exists:
+        if self.units(CYBERNETICSCORE).ready.exists:
             CYBERCORE_IND = 1
         else:
             CYBERCORE_IND = 0
 
-        if self.units(ROBOFACILITY).ready.exists:
+        if self.units(ROBOTICSFACILITY).ready.exists:
             ROBOFACILITY_IND = 1
         else:
             ROBOFACILITY_IND = 0
 
-        if self.units().ready.exists:
+        if self.units(STARGATE).ready.exists:
             STARGATE_IND = 1
         else:
             STARGATE_IND = 0
 
-        if self.units().ready.exists:
+        if self.units(ROBOTICSBAY).ready.exists:
             ROBOBAY_IND = 1
         else:
             ROBOBAY_IND = 0
@@ -307,7 +308,7 @@ class BinaryBot(sc2.BotAI):
             score_data[10] = self.state.score.killed_value_units
 
     # TODO Convert all actions into smart actions
-    # setup random selection bot to pick from these
+    # 
     # ?? Possibly create a counter to record the number each action is taken ??
         
         choice = smart_actions[random.randint(0, 8)]
@@ -351,15 +352,21 @@ class BinaryBot(sc2.BotAI):
     #             return self.enemy_start_locations[0]
 
     # Action 1 - Attack
+    # In theory tags_not_in should select 
+    # any non-worker that isnt idle
+    # PROBE ID = 84
+
+    # May work instead, not tested
+    #self.units.exclude_type('PROBE')
     async def attack(self):
         if len(self.known_enemy_structures) > 0:
-            for s in self.units(UNIT).idle:
+            for s in self.units.tags_not_in(84).idle:
                 await self.do(s.attack(random.choice(self.known_enemy_structures)))
         elif len(self.known_enemy_units) > 0:
-            for s in self.units(UNIT).idle:
+            for s in self.units.tags_not_in(84).idle:
                 await self.do(s.attack(random.choice(self.known_enemy_units)))
         else:
-            for s in self.units(UNIT).idle:
+            for s in self.units.tags_not_in(84).idle:
                 await self.do(s.attack(random.choice(self.enemy_start_locations[0])))        
 
     # Action 2 - build assimilators
@@ -425,15 +432,8 @@ class BinaryBot(sc2.BotAI):
             for gw in self.units(ROBOTICSFACILITY).ready.noqueue:
                 await self.do(gw.train(COLOSSUS))
 
-        else:
-            break
-
     async def do_nothing(self):
-        if self.iteration > self.do_something_after:
-                if choice == 0:
-                    # no attack
-                    wait = random.randrange(20, 165)
-                    self.do_something_after = wait
+        time.sleep(random.randrange(5, 15))
 
     async def build_workers(self):
         if (len(self.units(NEXUS)) * 16) > len(self.units(PROBE)) and \
