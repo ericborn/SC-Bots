@@ -31,9 +31,9 @@ from pysc2.env import sc2_env
 import sc2
 from sc2 import run_game, maps, Race, Difficulty
 from sc2.player import Bot, Computer
-from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, ROBOT, \
+from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, \
  CYBERNETICSCORE, GATEWAY, ROBOTICSBAY, ROBOTICSFACILITY, STARGATE, \
- ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS, CARRIER
+ ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS
 
  
 
@@ -83,7 +83,9 @@ from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, ROBOT, \
 #                                                len(self.actions),
 #                                                index=self.q_table.columns,
 #                                                name=state))
-choice = random.randint(0, 8)
+
+#choice = random.randint(0, 8)
+
 # TODO
 #### USE DESCRETE ACTIONS AS INPUTS TO THE RL algorithm 
 # Dueling-DDQN [7, 38, 39] and PPO [40]), together with a distributed rollout infrastructure.
@@ -177,7 +179,6 @@ unit_choice = ''
 # SUPPLY_WORKERS_REWARD = 0.05
 
 # Bots current issues:
-# Too much expansion
 # Troops need to move out to protect expanded bases
 # sometimes creates multiple nexuses right next to each other
 # wont target troops repairing buildings
@@ -317,6 +318,7 @@ class BinaryBot(sc2.BotAI):
 
         if choice == 'attack':
             self.attack()
+            #print('attack')
 
         elif choice == 'build_assimilators':
             self.build_assimilators
@@ -352,21 +354,15 @@ class BinaryBot(sc2.BotAI):
     #             return self.enemy_start_locations[0]
 
     # Action 1 - Attack
-    # In theory tags_not_in should select 
-    # any non-worker that isnt idle
-    # PROBE ID = 84
-
-    # May work instead, not tested
-    #self.units.exclude_type('PROBE')
     async def attack(self):
         if len(self.known_enemy_structures) > 0:
-            for s in self.units.tags_not_in(84).idle:
+            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
                 await self.do(s.attack(random.choice(self.known_enemy_structures)))
         elif len(self.known_enemy_units) > 0:
-            for s in self.units.tags_not_in(84).idle:
+            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
                 await self.do(s.attack(random.choice(self.known_enemy_units)))
         else:
-            for s in self.units.tags_not_in(84).idle:
+            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
                 await self.do(s.attack(random.choice(self.enemy_start_locations[0])))        
 
     # Action 2 - build assimilators
@@ -494,71 +490,79 @@ class BinaryBot(sc2.BotAI):
                        self.already_pending(STARGATE):
                         await self.build(STARGATE, near=pylon)
 
-
 def main():
-    # Creates a random number between 0-9
-    diff = random.randrange(0,10)
-
-    # depending on the number selected a difficulty is chosen
-    if diff == 0:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.VeryEasy)
-            ], realtime=False)
-
-    if diff == 1:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.Easy)
-            ], realtime=False)
-    
-    if diff == 2:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.Medium)
-            ], realtime=False)
-
-    if diff == 3:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.MediumHard)
-            ], realtime=False)
-    
-    if diff == 4:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.Hard)
-            ], realtime=False)
-
-    if diff == 5:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.Harder)
-            ], realtime=False)
-    
-    if diff == 6:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.VeryHard)
-            ], realtime=False)
-
-    if diff == 7:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.CheatVision)
-            ], realtime=False)
-
-    if diff == 8:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.CheatMoney)
-            ], realtime=False)
-
-    if diff == 9:
-        run_game(maps.get("AbyssalReefLE"), [
-            Bot(Race.Protoss, BinaryBot()),
-            Computer(Race.Terran, Difficulty.CheatInsane)
-            ], realtime=False)
+    run_game(maps.get("AbyssalReefLE"), [
+        Bot(Race.Protoss, BinaryBot()),
+        Computer(Race.Terran, Difficulty.Easy)
+        ], realtime=True)
 
 if __name__ == '__main__':
     main()
+
+#def main():
+#    # Creates a random number between 0-9
+#    diff = random.randrange(0,10)
+#
+#    # depending on the number selected a difficulty is chosen
+#    if diff == 0:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.VeryEasy)
+#            ], realtime=False)
+#
+#    if diff == 1:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.Easy)
+#            ], realtime=False)
+#    
+#    if diff == 2:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.Medium)
+#            ], realtime=False)
+#
+#    if diff == 3:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.MediumHard)
+#            ], realtime=False)
+#    
+#    if diff == 4:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.Hard)
+#            ], realtime=False)
+#
+#    if diff == 5:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.Harder)
+#            ], realtime=False)
+#    
+#    if diff == 6:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.VeryHard)
+#            ], realtime=False)
+#
+#    if diff == 7:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.CheatVision)
+#            ], realtime=False)
+#
+#    if diff == 8:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.CheatMoney)
+#            ], realtime=False)
+#
+#    if diff == 9:
+#        run_game(maps.get("AbyssalReefLE"), [
+#            Bot(Race.Protoss, BinaryBot()),
+#            Computer(Race.Terran, Difficulty.CheatInsane)
+#            ], realtime=False)
+#
+#if __name__ == '__main__':
+#    main()
