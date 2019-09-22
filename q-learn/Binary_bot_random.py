@@ -4,7 +4,6 @@
 Developed a bot that plays at the Protoss race
 Choses a random difficulty between 0-9 then launches SC2
 and plays against the built-in AI
-
 Keeps track 12 attributes of the games progress and writes the results
 out to a numpy array file
 Also appends the outcome of the match to a csv file. 
@@ -97,10 +96,6 @@ from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, \
 #### Possibly have an expanding tree that when certain criteria are met, the actions can then be selected???
 
 # TODO
-### CREATE ARRAY THAT CONTAINS ALL ACTIONS TAKEN WITHIN THE GAME. 
-# EMPTY ARRAY THAT GETS APPENDED EACH TIME AN ACTION IS CHOSEN
-
-# TODO
 # AT EACH STEP, AGENT RECEIVES OBSERVATIONS THEN CHOOSES AN MACRO ACTION
 # ONCE ACTION IS CHOSEN, IT FILTERS DOWN TO THE FUNCTION THAT HANDLES THE MICRO ACTIONS.
 # EG. ACTION_OFFENSIVE_FORCE_BUILDINGS, FUNCTION CHECKS IF PYLON EXISTS, IF NOT IT BUILDS PYLON. 
@@ -178,19 +173,37 @@ unit_choice = ''
 # SUPPLY_ARMY_REWARD = 0.2
 # SUPPLY_WORKERS_REWARD = 0.05
 
+# creates empty np array to store game stats
+# match difficulty and the overall game outcome
+score_data = np.zeros(13)
+
+# Creates a random number between 0-9
+# this is used in the main() to set the difficulty of the game
+diff = random.randrange(0,10)
+
+# Store the difficulty setting in the array that is used as output data
+score_data[11] = diff
+
+# dict holding count of actions
+action_count = {
+    'attack' : 0,
+    'assimilators' : 0,
+    'offensive_force' : 0,
+    'nothing' : 0,
+    'workers' : 0,
+    'pylons' : 0,
+    'expand' : 0,
+    'buildings' : 0
+}
+
 # Bots current issues:
 # Troops need to move out to protect expanded bases
 # sometimes creates multiple nexuses right next to each other
 # wont target troops repairing buildings
-
-# creates empty np array to store game stats
-# and the overall game outcome
-score_data = np.zeros(12)
-
 class BinaryBot(sc2.BotAI):
     def __init__(self):
-        self.ITERATIONS_PER_MINUTE = 500
-        self.MAX_WORKERS = 200
+        self.ITERATIONS_PER_MINUTE = 165
+        self.MAX_WORKERS = 50
         
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
@@ -205,21 +218,21 @@ class BinaryBot(sc2.BotAI):
         
         # Defeat
         if result == 'Result.Defeat':
-            score_data[11] = -1
+            score_data[12] = -1
             self.write_csv(str(-1))
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
         
         # Win
         elif result == 'Result.Victory':
-            score_data[11] = 1
+            score_data[12] = 1
             self.write_csv(1)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
         
         # Tie
         else:
-            score_data[11] = 0
+            score_data[12] = 0
             self.write_csv(0)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(score_data))
@@ -308,10 +321,7 @@ class BinaryBot(sc2.BotAI):
         if score_data[10] < self.state.score.killed_value_units:
             score_data[10] = self.state.score.killed_value_units
 
-    # TODO Convert all actions into smart actions
-    # 
-    # ?? Possibly create a counter to record the number each action is taken ??
-        
+        # random number selected on each step that dictates the bots action
         choice = smart_actions[random.randint(0, 8)]
         
         #rl_action = self.qlearn.choose_action(str(current_state))
@@ -353,20 +363,9 @@ class BinaryBot(sc2.BotAI):
     #         else:
     #             return self.enemy_start_locations[0]
 
-# dict holding count of actions
-# action_count{
-# attack:0
-# assimilators:0
-# offensive_force:0
-# nothing:0
-# workers:0
-# pylons:0
-# expand:0
-# buildings:0
-#}
-
     # Action 1 - Attack
     async def attack(self):
+        action_count['attack'] += 1
         if len(self.known_enemy_structures) > 0:
             for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
                 await self.do(s.attack(random.choice(self.known_enemy_structures)))
@@ -379,6 +378,7 @@ class BinaryBot(sc2.BotAI):
 
     # Action 2 - build assimilators
     async def build_assimilators(self):
+        action_count['assimilators'] += 1
         for nexus in self.units(NEXUS).ready:
             vaspenes = self.state.vespene_geyser.closer_than(15.0, nexus)
             for vaspene in vaspenes:
@@ -398,6 +398,7 @@ class BinaryBot(sc2.BotAI):
     async def build_offensive_force(self):
         # random choice of what unit to build
         # limited by the buildings that unlock the unit being built
+        action_count['offensive_force'] += 1
         if ROBOBAY_IND == 1 and ROBOFACILITY_IND == 1:
             unit_choice = unit_list[random.randint(1, 6)]
 
@@ -441,9 +442,12 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(COLOSSUS))
 
     async def do_nothing(self):
+        action_count['nothing'] += 1
         time.sleep(random.randrange(5, 15))
 
+    # builds 16 workers per nexus up to a maximum of 50
     async def build_workers(self):
+        action_count['workers'] += 1
         if (len(self.units(NEXUS)) * 16) > len(self.units(PROBE)) and \
                                            len(self.units(PROBE)) \
                                            < self.MAX_WORKERS:
@@ -452,6 +456,7 @@ class BinaryBot(sc2.BotAI):
                     await self.do(nexus.train(PROBE))
 
     async def build_pylons(self):
+        action_count['pylons'] += 1
         if self.supply_left < 5 and not self.already_pending(PYLON):
             nexuses = self.units(NEXUS).ready
             if nexuses.exists:
@@ -462,6 +467,7 @@ class BinaryBot(sc2.BotAI):
     
 
     async def expand(self):
+        action_count['expand'] += 1
         if self.units(NEXUS).amount < \
           (self.iteration / self.ITERATIONS_PER_MINUTE) and (
             self.can_afford(NEXUS)) and (
@@ -470,10 +476,8 @@ class BinaryBot(sc2.BotAI):
             await self.expand_now()
 
 
-
-    
-
     async def offensive_force_buildings(self):
+        action_count['buildings'] += 1
         # Checks for a pylon as an indicator of where to build
         # small area around pylon is needed to place another building
         if self.units(PYLON).ready.exists:
@@ -512,8 +516,6 @@ if __name__ == '__main__':
     main()
 
 #def main():
-#    # Creates a random number between 0-9
-#    diff = random.randrange(0,10)
 #
 #    # depending on the number selected a difficulty is chosen
 #    if diff == 0:
