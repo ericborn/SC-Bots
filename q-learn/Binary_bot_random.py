@@ -173,10 +173,10 @@ unit_choice = ''
 # creates empty np array to store game stats, count of 
 # actions taken, match difficulty and the overall game outcome
 # [0]supply_cap, [1]supply_army, [2]supply_workers, [3]PYLON, [4]ASSIMILATOR, 
-# [5]GATEWAY, [6]NEXUS, [7]killed_structures, [8]killed_units, 
+# [5]GATEWAY, [6]STARGATE, [7]NEXUS, [8]killed_structures, [9]killed_units, 
 # actions
-# [9]attack, [10]assimilators, [11]offensive_force, [12]nothing, [13]workers, 
-# [14]pylons, [15]nothing, [16]expand, [17]buildings,
+# [10]attack, [11]assimilators, [12]offensive_force, [13]nothing, [14]workers, 
+# [15]pylons, [16]expand, [17]buildings,
 # [18]difficulty, [19]outcome
 
 
@@ -207,7 +207,8 @@ class BinaryBot(sc2.BotAI):
         #self.ITERATIONS_PER_MINUTE = 165 
         self.MAX_WORKERS = 50
         self.do_something_after = 0
-        self.delay = 1
+        self.delay_time = 0
+        self.delay = 25
         self.use_model = use_model
         self.score_data = np.zeros(20)
 
@@ -226,7 +227,7 @@ class BinaryBot(sc2.BotAI):
             7: self.expand,
             8: self.offensive_force_buildings
         }
-        self.actions_data = []
+        #self.actions_data = []
 
         if self.use_model:
             print("USING MODEL!")
@@ -266,18 +267,13 @@ class BinaryBot(sc2.BotAI):
 
     # This is the function steps forward and is called through each frame of the game
     async def on_step(self, iteration):
-        #self.iteration = iteration
         # 22.4 per second on faster game speed
-        #print(self.state.game_loop/22.4)
         self.time_loop = (self.state.game_loop/22.4) / 60
-        #print(self.time_loop)
+
+        # functions to select next action and send idle workers to a task
         await self.smart_action()
         await self.back_to_work()
-        # if self.time > self.do_something_after:
-        #     choice = smart_actions[random.randint(0, 8)]
-        #     print('my choice is', choice)
-        # random number selected on each step that dictates the bots action
-        
+
         # send starting chat message
         if iteration == 0:
             await self.chat_send("(glhf)")
@@ -286,8 +282,6 @@ class BinaryBot(sc2.BotAI):
         # May need to record this data every so many steps throughout the game
         # instead of just once at the end
         
-        # checks to see if the value has increased, if so records new value
-        # supplies
         if iteration % 5 == 0:
             self.score_data[0] = self.supply_cap
             self.score_data[1] = self.supply_army
@@ -295,45 +289,10 @@ class BinaryBot(sc2.BotAI):
             self.score_data[3] = self.units(PYLON).amount
             self.score_data[4] = self.units(ASSIMILATOR).amount
             self.score_data[5] = self.units(GATEWAY).amount
-            self.score_data[6] = self.units(NEXUS).amount
-            self.score_data[7] = self.state.score.killed_value_structures
-            self.score_data[8] = self.state.score.killed_value_units
-
-        # if choice == 'attack':
-        #     #self.attack()
-        #     self.score_data[9] += 1
-
-        # elif choice == 'build_assimilators':
-        #     #self.build_assimilators
-        #     self.score_data[10] += 1
-
-        # elif choice == 'build_offensive_force':
-        #     #self.build_offensive_force
-        #     self.score_data[11] += 1
-
-        # elif choice == 'build_pylons':
-        #     #self.build_pylons
-        #     self.score_data[12] += 1
-
-        # elif choice == 'build_workers':
-        #     #self.build_workers
-        #     self.score_data[13] += 1
-
-        # elif choice == 'distribute_workers':
-        #     #self.distribute_workers
-        #     self.score_data[14] += 1
-
-        # elif choice == 'nothing':
-        #     #self.do_nothing
-        #     self.score_data[15] += 1
-
-        # elif choice == 'expand':
-        #     #self.expand
-        #     self.score_data[16] += 1
-
-        # elif choice == 'offensive_force_buildings':
-        #     #self.offensive_force_buildings
-        #     self.score_data[17] += 1
+            self.score_data[6] = self.units(STARGATE).amount
+            self.score_data[7] = self.units(NEXUS).amount
+            self.score_data[8] = self.state.score.killed_value_structures
+            self.score_data[9] = self.state.score.killed_value_units
 
     # attempt to fix workers starting the warp in of a building
     # and not going back to work until its finished.
@@ -342,7 +301,6 @@ class BinaryBot(sc2.BotAI):
     # Does not work on workers who create assimilators since they're
     # being assigned to get gas upon starting the build
     async def back_to_work(self):
-        #print('back_to_work')
         if self.idle_worker_count > 0:
             self.distribute_workers
 
@@ -357,6 +315,7 @@ class BinaryBot(sc2.BotAI):
     # Action 1 - Attack
     async def attack(self):
         print('attack')
+        self.score_data[10] += 1
         if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).amount > 6:
             for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).idle:
                 await self.do(s.attack(self.find_target(self.state))) 
@@ -366,6 +325,7 @@ class BinaryBot(sc2.BotAI):
     # need to add check to move probes onto gas at this same step
     async def build_assimilators(self):
         print('build_assimilators')
+        self.score_data[11] += 1
         if self.supply_cap > 16:
             for nexus in self.units(NEXUS).ready:
                 vaspenes = self.state.vespene_geyser.closer_than(15.0, nexus)
@@ -388,6 +348,7 @@ class BinaryBot(sc2.BotAI):
         print('build_offensive_force')
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
+        self.score_data[12] += 1
         if self.units(GATEWAY).ready.exists:
             print('gateway exists')
             GATEWAY_IND = 1
@@ -485,11 +446,13 @@ class BinaryBot(sc2.BotAI):
 
     async def do_nothing(self):
         #print('do_nothing')
+        self.score_data[13] += 1
         wait = random.randrange(10, 30)/100
         self.do_something_after = self.time_loop + wait
 
     # builds 16 workers per nexus up to a maximum of 50
     async def build_workers(self):
+        self.score_data[14] += 1
         print('build_workers')
         if (len(self.units(NEXUS)) * 16) > len(self.units(PROBE)) and \
                                            len(self.units(PROBE)) \
@@ -500,6 +463,7 @@ class BinaryBot(sc2.BotAI):
 
 
     async def build_pylons(self):
+        self.score_data[15] += 1
         print('build_pylons')
         if self.supply_left < 5 and not self.already_pending(PYLON):
             nexuses = self.units(NEXUS).ready
@@ -510,6 +474,7 @@ class BinaryBot(sc2.BotAI):
 
 
     async def expand(self):
+        self.score_data[16] += 1
         print('expand')
         if self.units(NEXUS).amount < \
           (self.time / self.time) and (
@@ -521,6 +486,7 @@ class BinaryBot(sc2.BotAI):
 
     async def offensive_force_buildings(self):
         print('offensive_force_buildings')
+        self.score_data[17] += 1
         # Checks for a pylon as an indicator of where to build
         # small area around pylon is needed to place another building
         if self.units(PYLON).ready.exists:
@@ -542,12 +508,14 @@ class BinaryBot(sc2.BotAI):
                 if self.can_afford(STARGATE) and not \
                     self.already_pending(STARGATE):
                     await self.build(STARGATE, near=pylon)
-    # TODO
-    # Hacky attempt at throttling the bots actions
-    # need a better method. perhaps use logic like in do_nothing method
+
+    # self.state.game_loop moves at 22.4 per second on faster game speed
+    # Hacky attempt at throttling the bots actions using the time from
+    # state.game_loop with an added delay of 25. Should represent
+    # about 1 move a second. 60-100 APM is average, 200+ is pro
+    # https://github.com/deepmind/pysc2/blob/master/docs/environment.md#apm-calculation
     async def smart_action(self):
-        # 22.4 per second on faster game speed
-        if round(self.time_loop) % 1 == 0 and \
+        if self.state.game_loop > self.delay_time and \
             self.time_loop > self.do_something_after:
             choice = random.randrange(0, 9)
             # if self.use_model:
@@ -555,23 +523,31 @@ class BinaryBot(sc2.BotAI):
             #     choice = np.argmax(prediction[0])
             # else:
             #     choice = random.randrange(0, 9)
-            print(self.actions[choice])
+            #print(self.actions[choice])
             try:
                 await self.actions[choice]()
             except Exception as e:
                 print(str(e))
-            y = np.zeros(10)
-            y[choice] = 1
-            self.actions_data.append([y, self.score_data])
+            #y = np.zeros(10)
+            #y[choice] = 1
+            #self.actions_data.append([y, self.score_data])
+            self.delay_time = self.state.game_loop + self.delay
 
 def main():
     run_game(maps.get("AbyssalReefLE"), [
         Bot(Race.Protoss, BinaryBot()),
         Computer(Race.Terran, Difficulty.VeryEasy)
-        ], realtime=True)
+        ], realtime=False)
 
 if __name__ == '__main__':
     main()
+
+# test = [427,428,428,429,429,429,430,430,431,431]
+
+# for i in range(len(test)):
+#     if test[i] % 2 == 0:
+#         print(test[i], 'true')
+
 
 #def main():
 #
