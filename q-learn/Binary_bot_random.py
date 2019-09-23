@@ -123,15 +123,20 @@ ROBOBAY_IND = 0
 
 unit_choice = ''
 
-# creates empty np array to store game stats, count of 
-# actions taken, match difficulty and the overall game outcome
+# training data format and locations
+# supply/building levels stored in the supply_data array
 # [0]supply_cap, [1]supply_army, [2]supply_workers, [3]NEXUS, [4]PYLON, [5]ASSIMILATOR, 
-# [6]GATEWAY, [7]CYBERCORE, [8]ROBOFAC, [9]STARGATE, [10]ROBOBAY, [11]killed_structures, [12]killed_units, 
-# actions
-# [13]attack, [14]assimilators, [15]offensive_force, [16]nothing, [17]workers, 
-# [18]pylons, [19]expand, [20]buildings,
-# [21]ZEALOT, [22]STALKER, [23]ADEPT, [24]IMMORTAL, [25]VOIDRAY, [26]COLOSSUS
-# [27]difficulty, [28]outcome
+# [6]GATEWAY, [7]CYBERCORE, [8]ROBOFAC, [9]STARGATE, [10]ROBOBAY, [11]killed_structures, [12]killed_units
+
+# actions stored in action_data array
+# [0]attack, [1]assimilators, [2]offensive_force, [3]nothing, [4]workers, 
+# [5]pylons, [6]expand, [7]buildings
+
+# troops stored in the troop_data array
+# [0]ZEALOT, [1]STALKER, [2]ADEPT, [3]IMMORTAL, [4]VOIDRAY, [5]COLOSSUS
+
+# outcome info stored in the outcome_data array
+# [0]difficulty, [1]outcome
 
 # Creates a random number between 0-9
 # this is used in the main() to set the difficulty of the game
@@ -156,14 +161,25 @@ class BinaryBot(sc2.BotAI):
     def __init__(self, use_model=False):
         #self.ITERATIONS_PER_MINUTE = 165 
         self.MAX_WORKERS = 50
+        
+        # Used to slow down the bots actions
         self.do_something_after = 0
         self.delay_time = 0
         self.delay = 25
-        self.use_model = use_model
-        self.training_data = np.zeros(29)
 
+        # used to allow a trained model to chose actions instead of random
+        self.use_model = use_model
+
+        # store data relating to current troop/building numbers
+        # updated every 5th iteration
+        self.supply_data = np.zeros(13)
+
+        # stores supply_data, action_data, troop_data and outcome
+        self.training_data = []
+        
         # Store the difficulty setting in the array that is used as output data
-        self.training_data[24] = diff
+        self.outcome_data = np.zeros(2)
+        self.outcome_data[0] = diff
 
         # Setup actions dictionary
         self.actions = {
@@ -177,7 +193,6 @@ class BinaryBot(sc2.BotAI):
             7: self.expand,
             8: self.offensive_force_buildings
         }
-        #self.actions_data = []
 
         if self.use_model:
             print("USING MODEL!")
@@ -196,21 +211,24 @@ class BinaryBot(sc2.BotAI):
         
         # Defeat
         if result == 'Result.Defeat':
-            self.training_data[25] = -1
+            self.outcome_data[1] = -1
+            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
             self.write_csv(str(-1))
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
         # Win
         elif result == 'Result.Victory':
-            self.training_data[25] = 1
+            self.outcome_data[1] = 1
+            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
             self.write_csv(1)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
         # Tie
         else:
-            self.training_data[25] = 0
+            self.outcome_data[1] = 0
+            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
             self.write_csv(0)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
@@ -268,16 +286,18 @@ class BinaryBot(sc2.BotAI):
     # Action 1 - Attack
     async def attack(self):
         # print('attack')
+        self.action_data = np.zeros(8)
         if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).amount > 6:
             for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).idle:
                 await self.do(s.attack(self.find_target(self.state)))
-                self.training_data[13] += 1
+                self.action_data[0] = 1
 
     # Action 2 - build assimilators
     # TODO
     # need to add check to move probes onto gas at this same step
     async def build_assimilators(self):
         # print('build_assimilators')
+        self.action_data = np.zeros(8)
         if self.supply_cap > 16:
             for nexus in self.units(NEXUS).ready:
                 vaspenes = self.state.vespene_geyser.closer_than(15.0, nexus)
@@ -290,14 +310,15 @@ class BinaryBot(sc2.BotAI):
                     if not self.units(ASSIMILATOR).closer_than(
                                                     1.0, vaspene).exists:
                         await self.do(worker.build(ASSIMILATOR, vaspene))
-                        self.training_data[14] += 1
+                        self.action_data[1] = 1
    
     # Action 3 - build offensive force
     async def build_offensive_force(self):
         # print('build_offensive_force')
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
-        
+        self.troop_data = np.zeros(6)
+        self.action_data = np.zeros(8)
         if self.units(GATEWAY).ready.exists:
             print('gateway exists')
             GATEWAY_IND = 1
@@ -354,6 +375,7 @@ class BinaryBot(sc2.BotAI):
             print('none')
             unit_choice = unit_list[0]
 
+        
         # TODO
         # Change the check from .ready.idle to a count method
         # currently only queues one unit at a time
@@ -361,87 +383,91 @@ class BinaryBot(sc2.BotAI):
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(ZEALOT))
-                self.training_data[15] += 1
-                self.training_data[21] += 1
+                self.troop_data[0] = 1
+                self.action_data[2] = 1
         
         elif unit_choice == 'STALKER' and self.can_afford(STALKER) and \
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(STALKER))
-                self.training_data[15] += 1
-                self.training_data[22] += 1
+                self.troop_data[1] = 1
+                self.action_data[2] = 1
 
         elif unit_choice == 'ADEPT' and self.can_afford(ADEPT) and \
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(ADEPT))
-                self.training_data[15] += 1
-                self.training_data[23] += 1
-
+                self.troop_data[2] = 1
+                self.action_data[2] = 1
 
         elif unit_choice == 'IMMORTAL' and self.can_afford(IMMORTAL) and \
         self.supply_left >= 4:
             for gw in self.units(ROBOTICSFACILITY).ready.idle:
                 await self.do(gw.train(IMMORTAL))
-                self.training_data[15] += 1
-                self.training_data[24] += 1
+                self.troop_data[3] = 1
+                self.action_data[2] = 1
 
         elif unit_choice == 'VOIDRAY' and self.can_afford(VOIDRAY) and \
         self.supply_left >= 4:
             for gw in self.units(STARGATE).ready.idle:
                 await self.do(gw.train(VOIDRAY))
-                self.training_data[15] += 1
-                self.training_data[25] += 1
+                self.troop_data[4] = 1
+                self.action_data[2] = 1
 
         elif unit_choice == 'COLOSSUS' and self.can_afford(COLOSSUS) and \
         self.supply_left >= 6:
             for gw in self.units(ROBOTICSFACILITY).ready.idle:
                 await self.do(gw.train(COLOSSUS))
-                self.training_data[15] += 1
-                self.training_data[26] += 1
+                self.troop_data[5] = 1
+                self.action_data[2] = 1
 
     async def do_nothing(self):
         #print('do_nothing')
-        self.training_data[16] += 1
+        self.action_data = np.zeros(8)
+        self.action_data[3] = 1
         wait = random.randrange(10, 30)/100
         self.do_something_after = self.time_loop + wait
 
     # builds 16 workers per nexus up to a maximum of 50
     async def build_workers(self):
         #print('build_workers')
+        self.action_data = np.zeros(8)
         if (len(self.units(NEXUS)) * 16) > len(self.units(PROBE)) and \
                                            len(self.units(PROBE)) \
                                            < self.MAX_WORKERS:
             for nexus in self.units(NEXUS).ready.idle:
                 if self.can_afford(PROBE):
                     await self.do(nexus.train(PROBE))
-                    self.training_data[17] += 1
+                    self.action_data[4] = 1
 
 
     async def build_pylons(self):
         #print('build_pylons')
+        self.action_data = np.zeros(8)
         if self.supply_left < 5 and not self.already_pending(PYLON):
             nexuses = self.units(NEXUS).ready
             if nexuses.exists:
                 if self.can_afford(PYLON):
                     # This may be an issue, watch if they only build at starting nexus
                     await self.build(PYLON, near=self.units(NEXUS).first.position.towards(self.game_info.map_center, 5))
-                    self.training_data[18] += 1
+                    self.action_data[5] = 1
 
     
     # Added not already_pending trying to prevent multiple
     # being built right next to each other
     async def expand(self):
         #print('expand')
+        self.action_data = np.zeros(8)
         if self.can_afford(NEXUS) and \
             not self.already_pending(NEXUS):
             await self.expand_now()
-            self.training_data[19] += 1
+            self.action_data[6] = 1
 
     # TODO
     # Need to expand tree to build ROBOTICSFACILITY and ROBOBAY
     async def offensive_force_buildings(self):
         print('offensive_force_buildings')
+        self.action_data = np.zeros(8)
         # Checks for a pylon as an indicator of where to build
         # small area around pylon is needed to place another building
         if self.units(PYLON).ready.exists:
@@ -452,32 +478,32 @@ class BinaryBot(sc2.BotAI):
                 not self.already_pending(GATEWAY):
                 #and self.units(GATEWAY).amount <= 2:
                 await self.build(GATEWAY, near=pylon)
-                self.training_data[20] += 1
+                self.action_data[7] = 1
             
             if self.units(GATEWAY).ready.exists and \
                self.units(CYBERNETICSCORE).amount < 1: # Added to limit to 1
                 if self.can_afford(CYBERNETICSCORE) and not \
                    self.already_pending(CYBERNETICSCORE):
                     await self.build(CYBERNETICSCORE, near=pylon)
-                    self.training_data[20] += 1
+                    self.action_data[7] = 1
 
             if self.units(CYBERNETICSCORE).ready.exists:
                 if self.can_afford(ROBOTICSFACILITY) and not \
                     self.already_pending(ROBOTICSFACILITY):
                     await self.build(ROBOTICSFACILITY, near=pylon)
-                    self.training_data[20] += 1
+                    self.action_data[7] = 1
             
             if self.units(CYBERNETICSCORE).ready.exists:
                 if self.can_afford(STARGATE) and not \
                     self.already_pending(STARGATE):
                     await self.build(STARGATE, near=pylon)
-                    self.training_data[20] += 1
+                    self.action_data[7] = 1
 
             if self.units(ROBOTICSFACILITY).ready.exists:
                 if self.can_afford(ROBOTICSBAY) and not \
                     self.already_pending(ROBOTICSBAY):
                     await self.build(ROBOTICSBAY, near=pylon)
-                    self.training_data[20] += 1
+                    self.action_data[7] = 1
 
     # self.state.game_loop moves at 22.4 per second on faster game speed
     # Hacky attempt at throttling the bots actions using the time from
@@ -488,93 +514,94 @@ class BinaryBot(sc2.BotAI):
         if self.state.game_loop > self.delay_time and \
             self.time_loop > self.do_something_after:
             choice = random.randrange(0, 9)
-
+            self.action_data = np.zeros(8)
+            self.action_data[choice] = 1
+            
             # if self.use_model:
             #     prediction = self.model.predict([self.flipped.reshape([-1, 176, 200, 3])])
             #     choice = np.argmax(prediction[0])
             # else:
             #     choice = random.randrange(0, 9)
             #print(self.actions[choice])
+            
             try:
                 await self.actions[choice]()
             except Exception as e:
                 print(str(e))
-            #y = np.zeros(10)
-            #y[choice] = 1
-            #self.actions_data.append([y, self.training_data])
+            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
             self.delay_time = self.state.game_loop + self.delay
 
+# Fixed difficulty
+# def main():
+#     run_game(maps.get("AbyssalReefLE"), [
+#         Bot(Race.Protoss, BinaryBot()),
+#         Computer(Race.Terran, Difficulty.VeryEasy)
+#         ], realtime=False)
+
+# if __name__ == '__main__':
+#     main()
+
+# Random difficulty
 def main():
-    run_game(maps.get("AbyssalReefLE"), [
-        Bot(Race.Protoss, BinaryBot()),
-        Computer(Race.Terran, Difficulty.VeryEasy)
-        ], realtime=False)
+   if diff == 0:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.VeryEasy)
+           ], realtime=False)
+
+   if diff == 1:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Easy)
+           ], realtime=False)
+   
+   if diff == 2:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Medium)
+           ], realtime=False)
+
+   if diff == 3:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.MediumHard)
+           ], realtime=False)
+   
+   if diff == 4:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Hard)
+           ], realtime=False)
+
+   if diff == 5:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Harder)
+           ], realtime=False)
+   
+   if diff == 6:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.VeryHard)
+           ], realtime=False)
+
+   if diff == 7:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.CheatVision)
+           ], realtime=False)
+
+   if diff == 8:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.CheatMoney)
+           ], realtime=False)
+
+   if diff == 9:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.CheatInsane)
+           ], realtime=False)
 
 if __name__ == '__main__':
-    main()
-
-#def main():
-#
-#    # depending on the number selected a difficulty is chosen
-#    if diff == 0:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.VeryEasy)
-#            ], realtime=False)
-#
-#    if diff == 1:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Easy)
-#            ], realtime=False)
-#    
-#    if diff == 2:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Medium)
-#            ], realtime=False)
-#
-#    if diff == 3:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.MediumHard)
-#            ], realtime=False)
-#    
-#    if diff == 4:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Hard)
-#            ], realtime=False)
-#
-#    if diff == 5:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Harder)
-#            ], realtime=False)
-#    
-#    if diff == 6:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.VeryHard)
-#            ], realtime=False)
-#
-#    if diff == 7:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.CheatVision)
-#            ], realtime=False)
-#
-#    if diff == 8:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.CheatMoney)
-#            ], realtime=False)
-#
-#    if diff == 9:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.CheatInsane)
-#            ], realtime=False)
-#
-#if __name__ == '__main__':
-#    main()
+   main()
