@@ -13,7 +13,7 @@ Also appends the outcome of the match to a csv file.
 import numpy as np
 import pandas as pd
 import random
-import keras
+#import keras
 import math
 import time
 import csv
@@ -230,7 +230,7 @@ class BinaryBot(sc2.BotAI):
 
         if self.use_model:
             print("USING MODEL!")
-            self.model = keras.models.load_model("model-name")
+            #self.model = keras.models.load_model("model-name")
         
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
@@ -267,11 +267,12 @@ class BinaryBot(sc2.BotAI):
     # This is the function steps forward and is called through each frame of the game
     async def on_step(self, iteration):
         #self.iteration = iteration
+        # 22.4 per second on faster game speed
+        #print(self.state.game_loop/22.4)
         self.time_loop = (self.state.game_loop/22.4) / 60
         #print(self.time_loop)
         await self.smart_action()
         await self.back_to_work()
-        await self.do_nothing()
         # if self.time > self.do_something_after:
         #     choice = smart_actions[random.randint(0, 8)]
         #     print('my choice is', choice)
@@ -388,31 +389,31 @@ class BinaryBot(sc2.BotAI):
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
         if self.units(GATEWAY).ready.exists:
-            print('gateway exists', self.units(GATEWAY).ready.exists)
+            print('gateway exists')
             GATEWAY_IND = 1
         else:
             GATEWAY_IND = 0
 
         if self.units(CYBERNETICSCORE).ready.exists:
-            print('cyber exists', self.units(CYBERNETICSCORE).ready.exists)
+            print('cyber exists')
             CYBERCORE_IND = 1
         else:
             CYBERCORE_IND = 0
 
         if self.units(ROBOTICSFACILITY).ready.exists:
-            print('robo-fac exists', self.units(ROBOTICSFACILITY).ready.exists)
+            print('robo-fac exists')
             ROBOFACILITY_IND = 1
         else:
             ROBOFACILITY_IND = 0
 
         if self.units(STARGATE).ready.exists:
-            print('stargate exists', self.units(STARGATE).ready.exists)
+            print('stargate exists')
             STARGATE_IND = 1
         else:
             STARGATE_IND = 0
 
         if self.units(ROBOTICSBAY).ready.exists:
-            print('robo-bay exists', self.units(ROBOTICSBAY).ready.exists)
+            print('robo-bay exists')
             ROBOBAY_IND = 1
         else:
             ROBOBAY_IND = 0
@@ -541,9 +542,13 @@ class BinaryBot(sc2.BotAI):
                 if self.can_afford(STARGATE) and not \
                     self.already_pending(STARGATE):
                     await self.build(STARGATE, near=pylon)
-
+    # TODO
+    # Hacky attempt at throttling the bots actions
+    # need a better method. perhaps use logic like in do_nothing method
     async def smart_action(self):
-        if self.time_loop > self.do_something_after:
+        # 22.4 per second on faster game speed
+        if round(self.time_loop) % 1 == 0 and \
+            self.time_loop > self.do_something_after:
             choice = random.randrange(0, 9)
             # if self.use_model:
             #     prediction = self.model.predict([self.flipped.reshape([-1, 176, 200, 3])])
