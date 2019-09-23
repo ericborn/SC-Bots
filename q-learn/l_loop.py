@@ -1,4 +1,4 @@
-import linux_binary_bot_r as bb
+import linux_binary_bot_m as bb
 
 i = 0
 while i < 20:
