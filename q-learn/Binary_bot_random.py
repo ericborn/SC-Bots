@@ -199,8 +199,8 @@ score_data[18] = diff
 # wont target troops repairing buildings
 class BinaryBot(sc2.BotAI):
     def __init__(self):
-        self.ITERATIONS_PER_MINUTE = 500
-        self.MAX_WORKERS = 200
+        self.ITERATIONS_PER_MINUTE = 165 
+        self.MAX_WORKERS = 50
         
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
@@ -310,37 +310,40 @@ class BinaryBot(sc2.BotAI):
             self.offensive_force_buildings
             score_data[17] += 1
 
-    # rolled into the attack action instead
-    # def find_target(self, state):
-    #         if len(self.known_enemy_units) > 0:
-    #             return random.choice(self.known_enemy_units)
-    #         elif len(self.known_enemy_structures) > 0:
-    #             return random.choice(self.known_enemy_structures)
-    #         else:
-    #             return self.enemy_start_locations[0]
-
     # attempt to fix workers starting the warp in of a building
     # and not going back to work until its finished.
     # checks for idle workers then calls a distribute_workers
     # to send them back to work.
-    
     # Does not work on workers who create assimilators since they're
     # being assigned to get gas upon starting the build
     async def back_to_work(self):
         if self.idle_worker_count > 0:
             self.distribute_workers
 
+    # rolled into the attack action instead
+    def find_target(self, state):
+            if len(self.known_enemy_units) > 0:
+                return random.choice(self.known_enemy_units)
+            elif len(self.known_enemy_structures) > 0:
+                return random.choice(self.known_enemy_structures)
+            else:
+                return self.enemy_start_locations[0]
+                
     # Action 1 - Attack
     async def attack(self):
-        if len(self.known_enemy_structures) > 0:
-            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
-                await self.do(s.attack(random.choice(self.known_enemy_structures)))
-        elif len(self.known_enemy_units) > 0:
-            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
-                await self.do(s.attack(random.choice(self.known_enemy_units)))
-        else:
-            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
-                await self.do(s.attack(random.choice(self.enemy_start_locations[0])))        
+        if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).amount > 6:
+            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).idle:
+                await self.do(s.attack(self.find_target(self.state))) 
+
+        # if len(self.known_enemy_structures) > 0:
+        #     for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
+        #         await self.do(s.attack(random.choice(self.known_enemy_structures)))
+        # elif len(self.known_enemy_units) > 0:
+        #     for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
+        #         await self.do(s.attack(random.choice(self.known_enemy_units)))
+        # else:
+        #     for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]):
+        #         await self.do(s.attack(random.choice(self.enemy_start_locations[0])))        
 
     # Action 2 - build assimilators
     async def build_assimilators(self):
@@ -364,7 +367,6 @@ class BinaryBot(sc2.BotAI):
     async def build_offensive_force(self):
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
-        
         if self.units(GATEWAY).ready.exists:
             print('gateway exists', self.units(GATEWAY).ready.exists)
             GATEWAY_IND = 1
@@ -423,54 +425,33 @@ class BinaryBot(sc2.BotAI):
             unit_choice = unit_list[0]
 
         
-        # if unit_choice != None:
-        #     print('can afford:', self.can_afford(unit_choice))
-
-        if unit_choice == 'ZEALOT' and self.can_afford(unit_choice) and \
+        if unit_choice == 'ZEALOT' and self.can_afford(ZEALOT) and \
         self.supply_left >= 2:
-            print('my unit choice is:', unit_choice)
-            print('can afford:',self.can_afford(unit_choice))
-            print('supply left:', self.supply_left)
             for gw in self.units(GATEWAY).ready.noqueue:
                 await self.do(gw.train(ZEALOT))
         
-        elif unit_choice == 'STALKER' and self.can_afford(unit_choice) and \
+        elif unit_choice == 'STALKER' and self.can_afford(STALKER) and \
         self.supply_left >= 2:
-            print('my unit choice is:', unit_choice)
-            print('can afford:',self.can_afford(unit_choice))
-            print('supply left:', self.supply_left)
             for gw in self.units(GATEWAY).ready.noqueue:
                 await self.do(gw.train(STALKER))
 
-        elif unit_choice == 'ADEPT' and self.can_afford(unit_choice) and \
+        elif unit_choice == 'ADEPT' and self.can_afford(ADEPT) and \
         self.supply_left >= 2:
-            print('my unit choice is:', unit_choice)
-            print('can afford:',self.can_afford(unit_choice))
-            print('supply left:', self.supply_left)
             for gw in self.units(GATEWAY).ready.noqueue:
                 await self.do(gw.train(ADEPT))
 
-        elif unit_choice == 'IMMORTAL' and self.can_afford(unit_choice) and \
+        elif unit_choice == 'IMMORTAL' and self.can_afford(IMMORTAL) and \
         self.supply_left >= 4:
-            print('my unit choice is:', unit_choice)
-            print('can afford:',self.can_afford(unit_choice))
-            print('supply left:', self.supply_left)
             for gw in self.units(ROBOTICSFACILITY).ready.noqueue:
                 await self.do(gw.train(IMMORTAL))
 
-        elif unit_choice == 'VOIDRAY' and self.can_afford(unit_choice) and \
+        elif unit_choice == 'VOIDRAY' and self.can_afford(VOIDRAY) and \
         self.supply_left >= 4:
-            print('my unit choice is:', unit_choice)
-            print('can afford:',self.can_afford(unit_choice))
-            print('supply left:', self.supply_left)
             for gw in self.units(STARGATE).ready.noqueue:
                 await self.do(gw.train(VOIDRAY))
 
-        elif unit_choice == 'COLOSSUS' and self.can_afford(unit_choice) and \
+        elif unit_choice == 'COLOSSUS' and self.can_afford(COLOSSUS) and \
         self.supply_left >= 6:
-            print('my unit choice is:', unit_choice)
-            print('can afford:',self.can_afford(unit_choice))
-            print('supply left:', self.supply_left)
             for gw in self.units(ROBOTICSFACILITY).ready.noqueue:
                 await self.do(gw.train(COLOSSUS))
 
@@ -542,7 +523,7 @@ def main():
     run_game(maps.get("AbyssalReefLE"), [
         Bot(Race.Protoss, BinaryBot()),
         Computer(Race.Terran, Difficulty.VeryEasy)
-        ], realtime=True)
+        ], realtime=False)
 
 if __name__ == '__main__':
     main()
