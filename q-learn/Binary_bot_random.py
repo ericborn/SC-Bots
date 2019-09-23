@@ -133,9 +133,6 @@ smart_actions = [
     ACTION_OFFENSIVE_FORCE_BUILDINGS
 ]
 
-choice = smart_actions[random.randint(0, 8)]
-print(choice)
-
 # units unlocked by the following buildings
 # gateway - ZEALOT
 # cyber core - STALKER, ADEPT
@@ -160,7 +157,7 @@ ROBOFACILITY_IND = 0
 STARGATE_IND = 0
 ROBOBAY_IND = 0
 
-#unit_choice = ''
+unit_choice = ''
 
 # possible rewards or counters for the learning system
 # units_destroyed = 0
@@ -177,29 +174,24 @@ ROBOBAY_IND = 0
 # [5]GATEWAY, [6]NEXUS, [7]killed_structures, [8]killed_units, 
 # actions
 # [9]attack, [10]assimilators, [11]offensive_force, [12]nothing, [13]workers, 
-# [14]pylons, [15]expand, [16]buildings,
-# [17]difficulty, [18]outcome
-
+# [14]pylons, [15]nothing, [16]expand, [17]buildings,
+# [18]difficulty, [19]outcome
 score_data = np.zeros(20)
 
 # Creates a random number between 0-9
 # this is used in the main() to set the difficulty of the game
-# diff = random.randrange(0,10)
+diff = random.randrange(0,10)
 
 # Store the difficulty setting in the array that is used as output data
-# score_data[18] = diff
+score_data[18] = diff
 
-# # dict holding count of actions
-# action_count = {
-#     'attack' : 0,
-#     'assimilators' : 0,
-#     'offensive_force' : 0,
-#     'nothing' : 0,
-#     'workers' : 0,
-#     'pylons' : 0,
-#     'expand' : 0,
-#     'buildings' : 0
-# }
+# Isnt working because you cant pass the difficulty as a string
+# diff_list = [
+#     'Difficulty.VeryEasy', 'Difficulty.Easy', 'Difficulty.Medium,'
+#     'Difficulty.MediumHard', 'Difficulty.Hard', 'Difficulty.Harder',
+#     'Difficulty.VeryHard', 'Difficulty.CheatMoney', 'Difficulty.CheatVision', 
+#     'Difficulty.CheatInsane'
+# ]
 
 # Bots current issues:
 # Troops need to move out to protect expanded bases
@@ -271,52 +263,52 @@ class BinaryBot(sc2.BotAI):
         
         # checks to see if the value has increased, if so records new value
         # supplies
-        # if self.iteration % 5 == 0:
-        #     score_data[0] = self.supply_cap
-        #     score_data[1] = self.supply_army
-        #     score_data[2] = self.supply_workers
-        #     score_data[3] = self.units(PYLON).amount
-        #     score_data[4] = self.units(ASSIMILATOR).amount
-        #     score_data[5] = self.units(GATEWAY).amount
-        #     score_data[6] = self.units(NEXUS).amount
-        #     score_data[7] = self.state.score.killed_value_structures
-        #     score_data[8] = self.state.score.killed_value_units
+        if self.iteration % 5 == 0:
+            score_data[0] = self.supply_cap
+            score_data[1] = self.supply_army
+            score_data[2] = self.supply_workers
+            score_data[3] = self.units(PYLON).amount
+            score_data[4] = self.units(ASSIMILATOR).amount
+            score_data[5] = self.units(GATEWAY).amount
+            score_data[6] = self.units(NEXUS).amount
+            score_data[7] = self.state.score.killed_value_structures
+            score_data[8] = self.state.score.killed_value_units
 
         if choice == 'attack':
             self.attack()
-            #score_data[9] += 1
+            score_data[9] += 1
 
         elif choice == 'build_assimilators':
             self.build_assimilators
-            #score_data[10] += 1
+            score_data[10] += 1
 
         elif choice == 'build_offensive_force':
             self.build_offensive_force
-            #score_data[11] += 1
+            score_data[11] += 1
 
         elif choice == 'build_pylons':
             self.build_pylons
-            #score_data[12] += 1
+            score_data[12] += 1
 
         elif choice == 'build_workers':
             self.build_workers
-            #score_data[13] += 1
+            score_data[13] += 1
 
         elif choice == 'distribute_workers':
             self.distribute_workers
-            #score_data[14] += 1
+            score_data[14] += 1
 
         elif choice == 'nothing':
             self.do_nothing
-            #score_data[15] += 1
+            score_data[15] += 1
 
         elif choice == 'expand':
             self.expand
-            #score_data[16] += 1
+            score_data[16] += 1
 
         elif choice == 'offensive_force_buildings':
             self.offensive_force_buildings
-            #score_data[17] += 1
+            score_data[17] += 1
 
     # rolled into the attack action instead
     # def find_target(self, state):
@@ -331,6 +323,9 @@ class BinaryBot(sc2.BotAI):
     # and not going back to work until its finished.
     # checks for idle workers then calls a distribute_workers
     # to send them back to work.
+    
+    # Does not work on workers who create assimilators since they're
+    # being assigned to get gas upon starting the build
     async def back_to_work(self):
         if self.idle_worker_count > 0:
             self.distribute_workers
@@ -364,33 +359,38 @@ class BinaryBot(sc2.BotAI):
     # TODO
     # May need to save for output what types of units its creating for learning purposes
     # Also could limit it as was done by others
+    
     # Action 3 - build offensive force
     async def build_offensive_force(self):
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
         
-        print('gateway exists', self.units(GATEWAY).ready.exists)
         if self.units(GATEWAY).ready.exists:
+            print('gateway exists', self.units(GATEWAY).ready.exists)
             GATEWAY_IND = 1
         else:
             GATEWAY_IND = 0
 
         if self.units(CYBERNETICSCORE).ready.exists:
+            print('cyber exists', self.units(CYBERNETICSCORE).ready.exists)
             CYBERCORE_IND = 1
         else:
             CYBERCORE_IND = 0
 
         if self.units(ROBOTICSFACILITY).ready.exists:
+            print('robo-fac exists', self.units(ROBOTICSFACILITY).ready.exists)
             ROBOFACILITY_IND = 1
         else:
             ROBOFACILITY_IND = 0
 
         if self.units(STARGATE).ready.exists:
+            print('stargate exists', self.units(STARGATE).ready.exists)
             STARGATE_IND = 1
         else:
             STARGATE_IND = 0
 
         if self.units(ROBOTICSBAY).ready.exists:
+            print('robo-bay exists', self.units(ROBOTICSBAY).ready.exists)
             ROBOBAY_IND = 1
         else:
             ROBOBAY_IND = 0
@@ -399,56 +399,87 @@ class BinaryBot(sc2.BotAI):
         # limited by the buildings that unlock the unit being built
 
         if ROBOBAY_IND == 1 and ROBOFACILITY_IND == 1:
+            print('random 1-6')
             unit_choice = unit_list[random.randint(1, 6)]
 
         elif ROBOFACILITY_IND == 1 and STARGATE_IND == 1:
+            print('random 1-5')
             unit_choice = unit_list[random.randint(1, 5)]
 
         elif ROBOFACILITY_IND == 1 and STARGATE_IND == 0:
+            print('random 1-4')
             unit_choice = unit_list[random.randint(1, 4)]
 
         elif CYBERCORE_IND == 1:
+            print('random 1-3')
             unit_choice = unit_list[random.randint(1, 3)]
 
         elif GATEWAY_IND == 1:
+            print('zealot')
             unit_choice = unit_list[1]
 
         else:
+            print('none')
             unit_choice = unit_list[0]
 
-#        print('my unit choice is', unit_choice)
-#        print('supply left:', self.supply_left)
+        
         # if unit_choice != None:
         #     print('can afford:', self.can_afford(unit_choice))
 
-        if unit_choice == 1 and self.can_afford(unit_choice) and self.supply_left >= 2:
+        if unit_choice == 'ZEALOT' and self.can_afford(unit_choice) and \
+        self.supply_left >= 2:
+            print('my unit choice is:', unit_choice)
+            print('can afford:',self.can_afford(unit_choice))
+            print('supply left:', self.supply_left)
             for gw in self.units(GATEWAY).ready.noqueue:
                 await self.do(gw.train(ZEALOT))
         
-        elif unit_choice == 2 and self.can_afford(unit_choice) and self.supply_left >= 2:
+        elif unit_choice == 'STALKER' and self.can_afford(unit_choice) and \
+        self.supply_left >= 2:
+            print('my unit choice is:', unit_choice)
+            print('can afford:',self.can_afford(unit_choice))
+            print('supply left:', self.supply_left)
             for gw in self.units(GATEWAY).ready.noqueue:
                 await self.do(gw.train(STALKER))
 
-        elif unit_choice == 3 and self.can_afford(unit_choice) and self.supply_left >= 2:
+        elif unit_choice == 'ADEPT' and self.can_afford(unit_choice) and \
+        self.supply_left >= 2:
+            print('my unit choice is:', unit_choice)
+            print('can afford:',self.can_afford(unit_choice))
+            print('supply left:', self.supply_left)
             for gw in self.units(GATEWAY).ready.noqueue:
                 await self.do(gw.train(ADEPT))
 
-        elif unit_choice == 4 and self.can_afford(unit_choice) and self.supply_left >= 4:
+        elif unit_choice == 'IMMORTAL' and self.can_afford(unit_choice) and \
+        self.supply_left >= 4:
+            print('my unit choice is:', unit_choice)
+            print('can afford:',self.can_afford(unit_choice))
+            print('supply left:', self.supply_left)
             for gw in self.units(ROBOTICSFACILITY).ready.noqueue:
                 await self.do(gw.train(IMMORTAL))
 
-        elif unit_choice == 5 and self.can_afford(unit_choice) and self.supply_left >= 4:
+        elif unit_choice == 'VOIDRAY' and self.can_afford(unit_choice) and \
+        self.supply_left >= 4:
+            print('my unit choice is:', unit_choice)
+            print('can afford:',self.can_afford(unit_choice))
+            print('supply left:', self.supply_left)
             for gw in self.units(STARGATE).ready.noqueue:
                 await self.do(gw.train(VOIDRAY))
 
-        elif unit_choice == 6 and self.can_afford(unit_choice) and self.supply_left >= 6:
+        elif unit_choice == 'COLOSSUS' and self.can_afford(unit_choice) and \
+        self.supply_left >= 6:
+            print('my unit choice is:', unit_choice)
+            print('can afford:',self.can_afford(unit_choice))
+            print('supply left:', self.supply_left)
             for gw in self.units(ROBOTICSFACILITY).ready.noqueue:
                 await self.do(gw.train(COLOSSUS))
 
     async def do_nothing(self):
         print('sleeping')
+        #actions.no_op()
         # !!!causes the whole game to sleep, need an alternative method!!!
         #time.sleep(random.randrange(5, 15))
+        
 
     # builds 16 workers per nexus up to a maximum of 50
     async def build_workers(self):
@@ -510,8 +541,8 @@ class BinaryBot(sc2.BotAI):
 def main():
     run_game(maps.get("AbyssalReefLE"), [
         Bot(Race.Protoss, BinaryBot()),
-        Computer(Race.Terran, Difficulty.Easy)
-        ], realtime=False)
+        Computer(Race.Terran, Difficulty.VeryEasy)
+        ], realtime=True)
 
 if __name__ == '__main__':
     main()
