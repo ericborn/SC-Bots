@@ -133,13 +133,8 @@ smart_actions = [
     ACTION_OFFENSIVE_FORCE_BUILDINGS
 ]
 
-# building indicators, used to check if units can be created
-# Flipped to a 1 if they exist
-GATEWAY_IND = 0
-CYBERCORE_IND = 0
-ROBOFACILITY_IND = 0
-STARGATE_IND = 0
-ROBOBAY_IND = 0
+choice = smart_actions[random.randint(0, 8)]
+print(choice)
 
 # units unlocked by the following buildings
 # gateway - ZEALOT
@@ -157,7 +152,15 @@ unit_list = [
     'COLOSSUS',
 ]
 
-unit_choice = ''
+# building indicators, used to check if units can be created
+# Flipped to a 1 if they exist
+GATEWAY_IND = 0
+CYBERCORE_IND = 0
+ROBOFACILITY_IND = 0
+STARGATE_IND = 0
+ROBOBAY_IND = 0
+
+#unit_choice = ''
 
 # possible rewards or counters for the learning system
 # units_destroyed = 0
@@ -181,10 +184,10 @@ score_data = np.zeros(20)
 
 # Creates a random number between 0-9
 # this is used in the main() to set the difficulty of the game
-diff = random.randrange(0,10)
+# diff = random.randrange(0,10)
 
 # Store the difficulty setting in the array that is used as output data
-score_data[18] = diff
+# score_data[18] = diff
 
 # # dict holding count of actions
 # action_count = {
@@ -204,8 +207,8 @@ score_data[18] = diff
 # wont target troops repairing buildings
 class BinaryBot(sc2.BotAI):
     def __init__(self):
-        self.ITERATIONS_PER_MINUTE = 165
-        self.MAX_WORKERS = 50
+        self.ITERATIONS_PER_MINUTE = 500
+        self.MAX_WORKERS = 200
         
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
@@ -242,10 +245,14 @@ class BinaryBot(sc2.BotAI):
     # This is the function steps forward and is called through each frame of the game
     async def on_step(self, iteration):
         self.iteration = iteration
+
+        # random number selected on each step that dictates the bots action
+        choice = smart_actions[random.randint(0, 8)]
+        print('my choice is', choice)
         
         # send starting chat message
         if iteration == 0:
-            await self.chat_send("(I'm a bot, prepare to die!)")
+            await self.chat_send("(glhf)")
 
         await self.attack()
         await self.build_assimilators()
@@ -256,67 +263,60 @@ class BinaryBot(sc2.BotAI):
         await self.do_nothing()
         await self.expand()
         await self.offensive_force_buildings()
-        #await self.back_to_work()
+        await self.back_to_work()
         
-        
-
         # TODO 
         # May need to record this data every so many steps throughout the game
         # instead of just once at the end
         
         # checks to see if the value has increased, if so records new value
         # supplies
-        if self.iteration % 5 == 0:
-            score_data[0] = self.supply_cap
-            score_data[1] = self.supply_army
-            score_data[2] = self.supply_workers
-            score_data[3] = self.units(PYLON).amount
-            score_data[4] = self.units(ASSIMILATOR).amount
-            score_data[5] = self.units(GATEWAY).amount
-            score_data[6] = self.units(NEXUS).amount
-            score_data[7] = self.state.score.killed_value_structures
-            score_data[8] = self.state.score.killed_value_units
-            
-        # random number selected on each step that dictates the bots action
-        choice = smart_actions[random.randint(0, 8)]
-        
-        #rl_action = self.qlearn.choose_action(str(current_state))
+        # if self.iteration % 5 == 0:
+        #     score_data[0] = self.supply_cap
+        #     score_data[1] = self.supply_army
+        #     score_data[2] = self.supply_workers
+        #     score_data[3] = self.units(PYLON).amount
+        #     score_data[4] = self.units(ASSIMILATOR).amount
+        #     score_data[5] = self.units(GATEWAY).amount
+        #     score_data[6] = self.units(NEXUS).amount
+        #     score_data[7] = self.state.score.killed_value_structures
+        #     score_data[8] = self.state.score.killed_value_units
 
         if choice == 'attack':
             self.attack()
-            score_data[9] += 1
+            #score_data[9] += 1
 
         elif choice == 'build_assimilators':
             self.build_assimilators
-            score_data[10] += 1
+            #score_data[10] += 1
 
         elif choice == 'build_offensive_force':
             self.build_offensive_force
-            score_data[11] += 1
+            #score_data[11] += 1
 
         elif choice == 'build_pylons':
             self.build_pylons
-            score_data[12] += 1
+            #score_data[12] += 1
 
         elif choice == 'build_workers':
             self.build_workers
-            score_data[13] += 1
+            #score_data[13] += 1
 
         elif choice == 'distribute_workers':
             self.distribute_workers
-            score_data[14] += 1
+            #score_data[14] += 1
 
         elif choice == 'nothing':
             self.do_nothing
-            score_data[15] += 1
+            #score_data[15] += 1
 
         elif choice == 'expand':
             self.expand
-            score_data[16] += 1
+            #score_data[16] += 1
 
         elif choice == 'offensive_force_buildings':
             self.offensive_force_buildings
-            score_data[17] += 1
+            #score_data[17] += 1
 
     # rolled into the attack action instead
     # def find_target(self, state):
@@ -331,9 +331,9 @@ class BinaryBot(sc2.BotAI):
     # and not going back to work until its finished.
     # checks for idle workers then calls a distribute_workers
     # to send them back to work.
-    # async def back_to_work(self):
-    #     if self.idle_worker_count > 0:
-    #         self.distribute_workers
+    async def back_to_work(self):
+        if self.idle_worker_count > 0:
+            self.distribute_workers
 
     # Action 1 - Attack
     async def attack(self):
@@ -368,6 +368,8 @@ class BinaryBot(sc2.BotAI):
     async def build_offensive_force(self):
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
+        
+        print('gateway exists', self.units(GATEWAY).ready.exists)
         if self.units(GATEWAY).ready.exists:
             GATEWAY_IND = 1
         else:
@@ -414,7 +416,10 @@ class BinaryBot(sc2.BotAI):
         else:
             unit_choice = unit_list[0]
 
-        print(unit_choice)
+#        print('my unit choice is', unit_choice)
+#        print('supply left:', self.supply_left)
+        # if unit_choice != None:
+        #     print('can afford:', self.can_afford(unit_choice))
 
         if unit_choice == 1 and self.can_afford(unit_choice) and self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.noqueue:
@@ -441,7 +446,9 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(COLOSSUS))
 
     async def do_nothing(self):
-        time.sleep(random.randrange(5, 15))
+        print('sleeping')
+        # !!!causes the whole game to sleep, need an alternative method!!!
+        #time.sleep(random.randrange(5, 15))
 
     # builds 16 workers per nexus up to a maximum of 50
     async def build_workers(self):
