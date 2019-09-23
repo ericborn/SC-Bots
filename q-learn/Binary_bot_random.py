@@ -472,15 +472,14 @@ class BinaryBot(sc2.BotAI):
                     # This may be an issue, watch if they only build at starting nexus
                     await self.build(PYLON, near=self.units(NEXUS).first.position.towards(self.game_info.map_center, 5))
 
-
+    
+    # Added not already_pending trying to prevent multiple
+    # being built right next to each other
     async def expand(self):
         self.score_data[16] += 1
         print('expand')
-        if self.units(NEXUS).amount < \
-          (self.time / self.time) and (
-            self.can_afford(NEXUS)) and (
-            # Added to try to prevent creating multiple nexus next to each other on expansion
-            not self.already_pending(NEXUS)):
+        if self.can_afford(NEXUS) and \
+            not self.already_pending(NEXUS):
             await self.expand_now()
 
 
@@ -493,9 +492,9 @@ class BinaryBot(sc2.BotAI):
             pylon = self.units(PYLON).ready.random
 
             # Gateway required first
-            if self.can_afford(GATEWAY) and not \
-                self.already_pending(GATEWAY) and not \
-                self.units(GATEWAY).amount <= 2:
+            if self.can_afford(GATEWAY) and \
+                not self.already_pending(GATEWAY):
+                #and self.units(GATEWAY).amount <= 2:
                 await self.build(GATEWAY, near=pylon)
 
             if self.units(GATEWAY).ready.exists and not \
@@ -518,6 +517,7 @@ class BinaryBot(sc2.BotAI):
         if self.state.game_loop > self.delay_time and \
             self.time_loop > self.do_something_after:
             choice = random.randrange(0, 9)
+
             # if self.use_model:
             #     prediction = self.model.predict([self.flipped.reshape([-1, 176, 200, 3])])
             #     choice = np.argmax(prediction[0])
