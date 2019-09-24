@@ -392,12 +392,14 @@ class BinaryBot(sc2.BotAI):
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(ZEALOT))
                 await self.do(gw.train(ZEALOT))
+                await self.do(gw.train(ZEALOT))
                 self.troop_data[0] = 1
                 #self.action_data[2] = 1
         
         elif unit_choice == 'STALKER' and self.can_afford(STALKER) and \
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
+                await self.do(gw.train(STALKER))
                 await self.do(gw.train(STALKER))
                 await self.do(gw.train(STALKER))
                 self.troop_data[1] = 1
@@ -408,12 +410,14 @@ class BinaryBot(sc2.BotAI):
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(ADEPT))
                 await self.do(gw.train(ADEPT))
+                await self.do(gw.train(ADEPT))
                 self.troop_data[2] = 1
                 #self.action_data[2] = 1
 
         elif unit_choice == 'IMMORTAL' and self.can_afford(IMMORTAL) and \
         self.supply_left >= 4:
             for gw in self.units(ROBOTICSFACILITY).ready.idle:
+                await self.do(gw.train(IMMORTAL))
                 await self.do(gw.train(IMMORTAL))
                 await self.do(gw.train(IMMORTAL))
                 self.troop_data[3] = 1
@@ -424,6 +428,7 @@ class BinaryBot(sc2.BotAI):
             for gw in self.units(STARGATE).ready.idle:
                 await self.do(gw.train(VOIDRAY))
                 await self.do(gw.train(VOIDRAY))
+                await self.do(gw.train(VOIDRAY))
                 self.troop_data[4] = 1
                 #self.action_data[2] = 1
 
@@ -432,10 +437,11 @@ class BinaryBot(sc2.BotAI):
             for gw in self.units(ROBOTICSFACILITY).ready.idle:
                 await self.do(gw.train(COLOSSUS))
                 await self.do(gw.train(COLOSSUS))
+                await self.do(gw.train(COLOSSUS))
                 self.troop_data[5] = 1
                 #self.action_data[2] = 1
-        else:
-            self.build_pylons()
+        #else:
+        #    await self.build_pylons()
 
     async def do_nothing(self):
         #print('do_nothing')
@@ -459,8 +465,7 @@ class BinaryBot(sc2.BotAI):
     async def build_pylons(self):
         #print('build_pylons')
         #self.action_data = np.zeros(8)
-        if self.supply_cap != 200: 
-        #self.supply_left < 10 and not 
+        if self.supply_cap != 200 and self.supply_left < 10: 
             #and not self.already_pending(PYLON): #dont care, build another
             nexuses = self.units(NEXUS).ready
             if nexuses.exists:
