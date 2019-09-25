@@ -333,7 +333,14 @@ class BinaryBot(sc2.BotAI):
         # print('build_offensive_force')
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
+        
+        # troop data contains the type of troop
+        # selected for creation
+        # re-initialized each time build_offensive_force
+        # is called to prevent object reference issues
+        # in the main training_data list
         self.troop_data = np.zeros(6)
+        
         #self.action_data = np.zeros(8)
         if self.units(GATEWAY).ready.exists:
             #print('gateway exists')
@@ -547,7 +554,8 @@ class BinaryBot(sc2.BotAI):
             # choses random number which represents the action
             # being carried out on the next step
             self.action_data = np.zeros(9)
-            self.action_data[random.randrange(0, 9)] = 1
+            action_choice = random.randrange(0, 9)
+            self.action_data[action_choice] = 1
             
             # if self.use_model:
             #     prediction = self.model.predict([self.flipped.reshape(
@@ -569,23 +577,9 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.action_data)
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)  
-            
-
-            self.action_data = np.zeros(4)
-            self.action_choice = random.randrange(0, 4)
-            self.action_data[self.action_choice] = 1
-
-            self.troop_data = np.zeros(3)
-            self.troop_choice = random.randrange(0, 3)
-            self.troop_data[self.troop_choice] = 1
-
-                     
-                        
-                        
-                        
-                        
+           
             try:
-                await self.actions[choice]()
+                await self.actions[action_choice]()
             except Exception as e:
                 print(str(e))
             # Only gets appended
