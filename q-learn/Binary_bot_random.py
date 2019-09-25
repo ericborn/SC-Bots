@@ -125,21 +125,22 @@ ROBOBAY_IND = 0
 
 unit_choice = ''
 
-# training data format and locations
+# training_data format and locations
 # supply/building levels stored in the supply_data array
-# [0]supply_cap, [1]supply_army, [2]supply_workers, [3]NEXUS, [4]PYLON, 
-# [5]ASSIMILATOR, [6]GATEWAY, [7]CYBERCORE, [8]ROBOFAC, [9]STARGATE, 
-# [10]ROBOBAY, [11]killed_structures, [12]killed_units
+# [0]total minerals, [1]total gas,
+# [2]supply_cap, [3]supply_army, [4]supply_workers, [5]NEXUS, [6]PYLON, 
+# [7]ASSIMILATOR, [8]GATEWAY, [9]CYBERCORE, [10]ROBOFAC, [11]STARGATE, 
+# [12]ROBOBAY, [13]killed_structures, [14]killed_units
 
 # actions stored in action_data array
-# [0]attack, [1]assimilators, [2]offensive_force, [3]pylons, [4]workers, 
-# [5]distribute,  [6]nothing, [7]expand, [8]buildings
+# [15]attack, [16]assimilators, [17]offensive_force, [18]pylons, [19]workers, 
+# [20]distribute,  [21]]nothing, [22]expand, [23]buildings
 
 # troops stored in the troop_data array
-# [0]ZEALOT, [1]STALKER, [2]ADEPT, [3]IMMORTAL, [4]VOIDRAY, [5]COLOSSUS
+# [24]ZEALOT, [25]STALKER, [26]ADEPT, [27]IMMORTAL, [28]VOIDRAY, [29]COLOSSUS
 
 # outcome info stored in the outcome_data array
-# [0]difficulty, [1]outcome
+# [30]difficulty, [31]outcome
 
 # Creates a random number between 0-9
 # this is used in the main() to set the difficulty of the game
@@ -178,7 +179,7 @@ class BinaryBot(sc2.BotAI):
 
         # store data relating to current troop/building numbers
         # updated every 5th iteration
-        self.supply_data = np.zeros(13)
+        self.supply_data = np.zeros(15)
 
         # stores data related to which troops were built
         self.troop_data = np.zeros(6)
@@ -191,7 +192,7 @@ class BinaryBot(sc2.BotAI):
         self.outcome_data[0] = diff
 
         # Setup actions dictionary
-        self.actions = {
+        self.actions_dict = {
             0: self.attack,
             1: self.build_assimilators,
             2: self.build_offensive_force,
@@ -221,8 +222,24 @@ class BinaryBot(sc2.BotAI):
         # Defeat
         if result == 'Result.Defeat':
             self.outcome_data[1] = -1
-            self.training_data.append([self.supply_data, self.action_data, 
-                                       self.troop_data, self.outcome_data])
+#            self.training_data.append([self.supply_data, self.action_data, 
+#                                       self.troop_data, self.outcome_data])
+            self.training_data.append([
+                self.state.score.collected_minerals,
+                self.state.score.collected_vespene,
+                self.supply_cap, self.supply_army,
+                self.supply_workers, self.units(NEXUS).amount,
+                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                self.units(ROBOTICSBAY).amount,
+                self.state.score.killed_value_structures,
+                self.state.score.killed_value_units
+            ])
+            self.training_data[-1].extend(self.action_data)
+            self.training_data[-1].extend(self.troop_data)
+            self.training_data[-1].extend(self.outcome_data)
+
             self.write_csv(str(-1))
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
@@ -230,17 +247,50 @@ class BinaryBot(sc2.BotAI):
         # Win
         elif result == 'Result.Victory':
             self.outcome_data[1] = 1
-            self.training_data.append([self.supply_data, self.action_data, 
-                                       self.troop_data, self.outcome_data])
+#            self.training_data.append([self.supply_data, self.action_data, 
+#                                       self.troop_data, self.outcome_data])
+            
+            self.training_data.append([
+                self.state.score.collected_minerals,
+                self.state.score.collected_vespene,
+                self.supply_cap, self.supply_army,
+                self.supply_workers, self.units(NEXUS).amount,
+                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                self.units(ROBOTICSBAY).amount,
+                self.state.score.killed_value_structures,
+                self.state.score.killed_value_units
+            ])
+            self.training_data[-1].extend(self.action_data)
+            self.training_data[-1].extend(self.troop_data)
+            self.training_data[-1].extend(self.outcome_data)
+
             self.write_csv(1)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
         # Tie
         else:
-            self.outcome_data[1] = 0
-            self.training_data.append([self.supply_data, self.action_data, 
-                                       self.troop_data, self.outcome_data])
+#            self.outcome_data[1] = 0
+#            self.training_data.append([self.supply_data, self.action_data, 
+#                                       self.troop_data, self.outcome_data]
+            self.training_data.append([
+                self.state.score.collected_minerals,
+                self.state.score.collected_vespene,
+                self.supply_cap, self.supply_army,
+                self.supply_workers, self.units(NEXUS).amount,
+                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                self.units(ROBOTICSBAY).amount,
+                self.state.score.killed_value_structures,
+                self.state.score.killed_value_units
+            ])
+            self.training_data[-1].extend(self.action_data)
+            self.training_data[-1].extend(self.troop_data)
+            self.training_data[-1].extend(self.outcome_data)  
+            
             self.write_csv(0)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
@@ -338,7 +388,7 @@ class BinaryBot(sc2.BotAI):
         # selected for creation
         # re-initialized each time build_offensive_force
         # is called to prevent object reference issues
-        # in the main training_data list
+        # in the training_data list
         self.troop_data = np.zeros(6)
         
         #self.action_data = np.zeros(8)
@@ -401,8 +451,8 @@ class BinaryBot(sc2.BotAI):
         
         # TODO
         # currently only queues one unit at a time using gw.train
-        # hacky method is just to call it twice per troop
-        # better method should be found
+        # hacky method is just to call it multiple times per troop
+        # a better method should be found
         if unit_choice == 'ZEALOT' and self.can_afford(ZEALOT) and \
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
@@ -553,6 +603,9 @@ class BinaryBot(sc2.BotAI):
             
             # choses random number which represents the action
             # being carried out on the next step
+            # re-initialized each time smart_action
+            # is called to prevent object reference issues
+            # in the training_data list
             self.action_data = np.zeros(9)
             action_choice = random.randrange(0, 9)
             self.action_data[action_choice] = 1
@@ -564,7 +617,16 @@ class BinaryBot(sc2.BotAI):
             # else:
             #     choice = random.randrange(0, 9)
             #print(self.actions[choice])
+            
+            # appends all supply data to the training_data list
+            # then extends that list with the action, troop and outcome data
+            # in the last index with -1
+            # on the next loop it appends a new list to the origina list 
+            # and repeats the process
             self.training_data.append([
+                self.state.score.collected_minerals,
+                self.state.score.collected_vespene,
+                #self.minerals, self.vespene,
                 self.supply_cap, self.supply_army,
                 self.supply_workers, self.units(NEXUS).amount,
                 self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
@@ -577,16 +639,18 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.action_data)
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)  
-           
+            
+            # print various parts from training_data
+            #print(self.training_data[-1][0:2])
+            
             try:
-                await self.actions[action_choice]()
+                await self.actions_dict[action_choice]()
             except Exception as e:
                 print(str(e))
             # Only gets appended
             # self.training_data.append([self.supply_data, self.action_data, 
             #                            self.troop_data, self.outcome_data])
             self.delay_time = self.state.game_loop + self.delay
-            print(self.training_data[-1])
             
 # Fixed difficulty
 def main():
