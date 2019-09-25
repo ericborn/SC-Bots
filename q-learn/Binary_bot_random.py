@@ -87,15 +87,17 @@ from sc2.constants import NEXUS, PROBE, PYLON, ASSIMILATOR, \
 
 # TODO
 #### USE DESCRETE ACTIONS AS INPUTS TO THE RL algorithm 
-# Dueling-DDQN [7, 38, 39] and PPO [40]), together with a distributed rollout infrastructure.
+# Dueling-DDQN [7, 38, 39] and PPO [40]), 
+# together with a distributed rollout infrastructure.
 
 # TODO
-# TENCENT IS USING A REWARD SYSTEM AFTER EACH STEP, SEE IF YOU CAN FIND WHAT IT IS.
-# INFORMATION SEEMS CONFLICTING, ONE SAYS AFTER EACH STEP THEN REFER TO A SECTION THAT
-# ONLY COVERS THE END OF GAME REWARD.
-# POSSIBLY CREATE A SYSTEM THAT PENALIZES CHOOSING AN OPTION THAT ISNT CURRENTLY AVAILABLE
-# SO THAT THE BOT IS LESS LIKELY TO CHOSE IT ON THE NEXT STEP. AFTER IT COMPLETES A STEP
-# THE PENALTY GOES AWAY.
+# TENCENT IS USING A REWARD SYSTEM AFTER EACH STEP, 
+# SEE IF YOU CAN FIND WHAT IT IS.
+# INFORMATION SEEMS CONFLICTING, ONE SAYS AFTER EACH STEP THEN REFER TO A 
+# SECTION THAT ONLY COVERS THE END OF GAME REWARD.
+# POSSIBLY CREATE A SYSTEM THAT PENALIZES CHOOSING AN OPTION THAT ISNT 
+# CURRENTLY AVAILABLE SO THAT THE BOT IS LESS LIKELY TO CHOSE IT ON THE NEXT 
+# STEP. AFTER IT COMPLETES A STEP THE PENALTY GOES AWAY.
 
 # units unlocked by the following buildings
 # gateway - ZEALOT
@@ -125,8 +127,9 @@ unit_choice = ''
 
 # training data format and locations
 # supply/building levels stored in the supply_data array
-# [0]supply_cap, [1]supply_army, [2]supply_workers, [3]NEXUS, [4]PYLON, [5]ASSIMILATOR, 
-# [6]GATEWAY, [7]CYBERCORE, [8]ROBOFAC, [9]STARGATE, [10]ROBOBAY, [11]killed_structures, [12]killed_units
+# [0]supply_cap, [1]supply_army, [2]supply_workers, [3]NEXUS, [4]PYLON, 
+# [5]ASSIMILATOR, [6]GATEWAY, [7]CYBERCORE, [8]ROBOFAC, [9]STARGATE, 
+# [10]ROBOBAY, [11]killed_structures, [12]killed_units
 
 # actions stored in action_data array
 # [0]attack, [1]assimilators, [2]offensive_force, [3]pylons, [4]workers, 
@@ -218,7 +221,8 @@ class BinaryBot(sc2.BotAI):
         # Defeat
         if result == 'Result.Defeat':
             self.outcome_data[1] = -1
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
+            self.training_data.append([self.supply_data, self.action_data, 
+                                       self.troop_data, self.outcome_data])
             self.write_csv(str(-1))
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
@@ -226,7 +230,8 @@ class BinaryBot(sc2.BotAI):
         # Win
         elif result == 'Result.Victory':
             self.outcome_data[1] = 1
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
+            self.training_data.append([self.supply_data, self.action_data, 
+                                       self.troop_data, self.outcome_data])
             self.write_csv(1)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
@@ -234,12 +239,14 @@ class BinaryBot(sc2.BotAI):
         # Tie
         else:
             self.outcome_data[1] = 0
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
+            self.training_data.append([self.supply_data, self.action_data, 
+                                       self.troop_data, self.outcome_data])
             self.write_csv(0)
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
 
-    # This is the function steps forward and is called through each frame of the game
+    # This is the function that steps forward
+    # and is called through each frame of the game
     async def on_step(self, iteration):
         # 22.4 per second on faster game speed
         self.time_loop = (self.state.game_loop/22.4) / 60
@@ -252,25 +259,25 @@ class BinaryBot(sc2.BotAI):
         if iteration == 0:
             await self.chat_send("(glhf)")
 
-        # TODO 
-        # May need to record this data every so many steps throughout the game
-        # instead of just once at the end
-        
-        if iteration % 5 == 0:
-            self.supply_data[0] = self.supply_cap
-            self.supply_data[1] = self.supply_army
-            self.supply_data[2] = self.supply_workers
-            self.supply_data[3] = self.units(NEXUS).amount
-            self.supply_data[4] = self.units(PYLON).amount
-            self.supply_data[5] = self.units(ASSIMILATOR).amount
-            self.supply_data[6] = self.units(GATEWAY).amount
-            self.supply_data[7] = self.units(CYBERNETICSCORE).amount
-            self.supply_data[8] = self.units(ROBOTICSFACILITY).amount
-            self.supply_data[9] = self.units(STARGATE).amount
-            self.supply_data[10] = self.units(ROBOTICSBAY).amount
-            self.supply_data[11] = self.state.score.killed_value_structures
-            self.supply_data[12] = self.state.score.killed_value_units
-
+        # every 5th iteration the supply_data stats are recorded
+        # and all 4 data arrays are appended to training_data
+#        if iteration % 5 == 0:
+#            self.supply_data[0] = self.supply_cap
+#            self.supply_data[1] = self.supply_army
+#            self.supply_data[2] = self.supply_workers
+#            self.supply_data[3] = self.units(NEXUS).amount
+#            self.supply_data[4] = self.units(PYLON).amount
+#            self.supply_data[5] = self.units(ASSIMILATOR).amount
+#            self.supply_data[6] = self.units(GATEWAY).amount
+#            self.supply_data[7] = self.units(CYBERNETICSCORE).amount
+#            self.supply_data[8] = self.units(ROBOTICSFACILITY).amount
+#            self.supply_data[9] = self.units(STARGATE).amount
+#            self.supply_data[10] = self.units(ROBOTICSBAY).amount
+#            self.supply_data[11] = self.state.score.killed_value_structures
+#            self.supply_data[12] = self.state.score.killed_value_units
+#            self.training_data.append([self.supply_data, self.action_data,
+#                                       self.troop_data, self.outcome_data])
+            
     # attempt to fix workers starting the warp in of a building
     # and not going back to work until its finished.
     # checks for idle workers then calls a distribute_workers
@@ -294,8 +301,10 @@ class BinaryBot(sc2.BotAI):
         # print('attack')
         #self.action_data = np.zeros(9)
         attack_amount = random.randrange(5, 10)
-        if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).amount > attack_amount:
-            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).idle:
+        if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, 
+                               COLOSSUS]).amount > attack_amount:
+            for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, 
+                                         VOIDRAY, COLOSSUS]).idle:
                 await self.do(s.attack(self.find_target(self.state)))
                 #self.action_data[0] = 1
 
@@ -470,7 +479,9 @@ class BinaryBot(sc2.BotAI):
             nexuses = self.units(NEXUS).ready
             if nexuses.exists:
                 if self.can_afford(PYLON):
-                    await self.build(PYLON, near=self.units(NEXUS).first.position.towards(self.game_info.map_center, 5))
+                    await self.build(PYLON, near=
+                                     self.units(NEXUS).first.position.towards(
+                                             self.game_info.map_center, 5))
                     #self.action_data[5] = 1
 
     
@@ -532,25 +543,57 @@ class BinaryBot(sc2.BotAI):
     async def smart_action(self):
         if self.state.game_loop > self.delay_time and \
             self.time_loop > self.do_something_after:
-            self.action_data = np.zeros(9)
             
-            choice = random.randrange(0, 9)
-            self.action_data[choice] = 1
+            # choses random number which represents the action
+            # being carried out on the next step
+            self.action_data = np.zeros(9)
+            self.action_data[random.randrange(0, 9)] = 1
             
             # if self.use_model:
-            #     prediction = self.model.predict([self.flipped.reshape([-1, 176, 200, 3])])
+            #     prediction = self.model.predict([self.flipped.reshape(
+                                                  #[-1, 176, 200, 3])])
             #     choice = np.argmax(prediction[0])
             # else:
             #     choice = random.randrange(0, 9)
             #print(self.actions[choice])
+            self.training_data.append([
+                self.supply_cap, self.supply_army,
+                self.supply_workers, self.units(NEXUS).amount,
+                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                self.units(ROBOTICSBAY).amount,
+                self.state.score.killed_value_structures,
+                self.state.score.killed_value_units
+            ])
+            self.training_data[-1].extend(self.action_data)
+            self.training_data[-1].extend(self.troop_data)
+            self.training_data[-1].extend(self.outcome_data)  
             
+
+            self.action_data = np.zeros(4)
+            self.action_choice = random.randrange(0, 4)
+            self.action_data[self.action_choice] = 1
+
+            self.troop_data = np.zeros(3)
+            self.troop_choice = random.randrange(0, 3)
+            self.troop_data[self.troop_choice] = 1
+
+                     
+                        
+                        
+                        
+                        
             try:
                 await self.actions[choice]()
             except Exception as e:
                 print(str(e))
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
+            # Only gets appended
+            # self.training_data.append([self.supply_data, self.action_data, 
+            #                            self.troop_data, self.outcome_data])
             self.delay_time = self.state.game_loop + self.delay
-
+            print(self.training_data[-1])
+            
 # Fixed difficulty
 def main():
     run_game(maps.get("AbyssalReefLE"), [
