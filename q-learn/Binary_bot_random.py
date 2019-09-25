@@ -623,22 +623,38 @@ class BinaryBot(sc2.BotAI):
             # in the last index with -1
             # on the next loop it appends a new list to the origina list 
             # and repeats the process
-            self.training_data.append([
-                self.state.score.collected_minerals,
-                self.state.score.collected_vespene,
-                #self.minerals, self.vespene,
-                self.supply_cap, self.supply_army,
-                self.supply_workers, self.units(NEXUS).amount,
-                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
-                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
-                self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
-                self.units(ROBOTICSBAY).amount,
-                self.state.score.killed_value_structures,
-                self.state.score.killed_value_units
-            ])
-            self.training_data[-1].extend(self.action_data)
-            self.training_data[-1].extend(self.troop_data)
-            self.training_data[-1].extend(self.outcome_data)  
+            if action_choice == 2:
+                self.training_data.append([
+                    self.state.score.collected_minerals,
+                    self.state.score.collected_vespene,
+                    self.supply_cap, self.supply_army,
+                    self.supply_workers, self.units(NEXUS).amount,
+                    self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                    self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                    self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                    self.units(ROBOTICSBAY).amount,
+                    self.state.score.killed_value_structures,
+                    self.state.score.killed_value_units
+                ])
+                self.training_data[-1].extend(self.action_data)
+                self.training_data[-1].extend(self.troop_data)
+                self.training_data[-1].extend(self.outcome_data)
+            else:
+                self.training_data.append([
+                    self.state.score.collected_minerals,
+                    self.state.score.collected_vespene,
+                    self.supply_cap, self.supply_army,
+                    self.supply_workers, self.units(NEXUS).amount,
+                    self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                    self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                    self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                    self.units(ROBOTICSBAY).amount,
+                    self.state.score.killed_value_structures,
+                    self.state.score.killed_value_units
+                ])
+                self.training_data[-1].extend(self.action_data)
+                self.training_data[-1].extend([0,0,0,0,0,0])
+                self.training_data[-1].extend(self.outcome_data)
             
             # print various parts from training_data
             #print(self.training_data[-1][0:2])
