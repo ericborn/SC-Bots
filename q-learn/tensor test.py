@@ -71,45 +71,67 @@ files = os.listdir(path)
 
 # object for single array file, which equals a single game
 a = np.load(path + files[0], allow_pickle=True)
-#b = np.load(path + files[1], allow_pickle=True)
 
+# setup an array that will exclude the action data
+no_actions_array = a
 
-# all rows from single game, supply_data
+# Removes the action indexes
+no_actions_array = np.delete(no_actions_array, slice(15,24),1)
+
+# shape is now 23 down from 32
+no_actions_array.shape
+
+no_actions_array[0]
+
+# Create an empty list to hold all actions
+action_list = []
+
+# store all action data into action list
 for i in range(0, len(a)):
-    print(a[i][0:15])
-
-# all rows from single game, action_data
-for i in range(0, len(a)):
-    print(a[i][15:24])
+    action_list.append(a[i][15:24])
+    np.delete(a_test[i][15:24])
     
-# all rows from single game, troop_data
-for i in range(0, len(a)):
-    print(a[i][24:30])
 
-# all rows from single game, outcome_data
-for i in range(0, len(a)):
-    print(a[i][30:32])
-
-# represents a single step from a game, all 4 data arrays
-a[0]
-
-# representsa single step, supply_data
-a[0][0:15]
-
-# single step, action_data
-a[0][15:24]
-
-# single step, troop_data
-a[0][24:30]
-
-# single step, outcome_data
-a[0][30:32]
+# View the data in various ways
+## all rows from single game, supply_data
+#for i in range(0, len(a)):
+#    print(a[i][0:15])
+#
+## all rows from single game, action_data
+#for i in range(0, len(a)):
+    #print(a[i][15:24])
+    
+## all rows from single game, troop_data
+#for i in range(0, len(a)):
+#    print(a[i][24:30])
+#
+## all rows from single game, outcome_data
+#for i in range(0, len(a)):
+#    print(a[i][30:32])
+#
+## represents a single step from a game, all 4 data arrays
+#a[0]
+#
+## representsa single step, supply_data
+#a[0][0:15]
+#
+## single step, action_data
+#a[0][15:24]
+#
+## single step, troop_data
+#a[0][24:30]
+#
+## single step, outcome_data
+#a[0][30:32]
 
 # scaled data
 #train_scaled = preprocessing.scale(train)
 #test_scaled = preprocessing.scale(test)
 a_scaled = preprocessing.scale(a)
 
+a_scaled[0][0:15]
+
+# create sequences for the data
 sequential_data = []
 prev_frames = collections.deque(maxlen=SEQ_LEN)
 
@@ -117,7 +139,8 @@ for i in a_scaled:  # iterate over the values
     prev_frames.append([n for n in i[:-1]])  # store all but the target
     if len(prev_frames) == SEQ_LEN:  # make sure we have 60 sequences!
         sequential_data.append([np.array(prev_frames), i[-1]])  # append those bad boys!
-   
+
+# Shuffle the data to prevent memorization instead of learning   
 random.shuffle(sequential_data)
 
 # find the index for the 95th %
