@@ -269,8 +269,8 @@ callback_checkpoint = ModelCheckpoint(filepath=path_checkpoint,
                                       save_best_only=True)
 
 # set early stop if the performance worsens on validation
-callback_early_stopping = EarlyStopping(monitor='val_loss',
-                                        patience=5, verbose=1)
+#callback_early_stopping = EarlyStopping(monitor='val_loss',
+#                                        patience=5, verbose=1)
 
 # setup tensorboard
 callback_tensorboard = TensorBoard(log_dir='./23_logs/',
@@ -285,7 +285,7 @@ callback_reduce_lr = ReduceLROnPlateau(monitor='val_loss',
                                        verbose=1)
 
 # setup list to hold all callback info
-callbacks = [callback_early_stopping,
+callbacks = [#callback_early_stopping,
              callback_checkpoint,
              callback_tensorboard,
              callback_reduce_lr]
@@ -309,6 +309,9 @@ try:
 except Exception as error:
     print("Error trying to load checkpoint.")
     print(error)
+
+model.save(r"C:\Users\TomBrody\Desktop\School\767 ML\SC Bot\NN\model\LSTM")
+
     
 result = model.evaluate(x=np.expand_dims(x_test_scaled, axis=0),
                         y=np.expand_dims(y_test_scaled, axis=0))
