@@ -4,6 +4,7 @@ Created on Tue Oct  1 19:42:51 2019
 
 @author: Eric Born
 """
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, LSTM, CuDNNLSTM,\
@@ -64,6 +65,10 @@ for file in range(0, len(files)):
         df2 = pd.DataFrame(data=np.load(path + files[file], 
                                 allow_pickle=True),columns=cols)
         full_df = full_df.append(df2)
+
+# setup target names for testing
+target_names = ['attack', 'assimilators', 'offensive_force', 'b_pylons',
+                'workers', 'distribute', 'nothing', 'expand', 'buildings']
 
 # setup x and y
 # x will be the supply_data inputs
@@ -185,6 +190,11 @@ model.add(GRU(units=512,
               return_sequences=True,
               input_shape=(None, num_x_signals,)))
 
+#model.add(GRU(units=512,
+#              return_sequences=True,
+#              input_shape=(None, num_x_signals,)))
+
+
 # The GRU outputs a batch of sequences of 512 values. 
 # We want to predict 9 output-signals, so we add a fully-connected (or dense) 
 # layer which maps 512 values down to only 9 values.
@@ -293,3 +303,66 @@ except Exception as error:
     
 result = model.evaluate(x=np.expand_dims(x_test_scaled, axis=0),
                         y=np.expand_dims(y_test_scaled, axis=0))
+
+def plot_comparison(start_idx, length=100, train=True):
+    """
+    Plot the predicted and true output-signals.
+    
+    :param start_idx: Start-index for the time-series.
+    :param length: Sequence-length to process and plot.
+    :param train: Boolean whether to use training- or test-set.
+    """
+    
+    if train:
+        # Use training-data.
+        x = x_train_scaled
+        y_true = y_train
+    else:
+        # Use test-data.
+        x = x_test_scaled
+        y_true = y_test
+    
+    # End-index for the sequences.
+    end_idx = start_idx + length
+    
+    # Select the sequences from the given start-index and
+    # of the given length.
+    x = x[start_idx:end_idx]
+    y_true = y_true[start_idx:end_idx]
+    
+    # Input-signals for the model.
+    x = np.expand_dims(x, axis=0)
+
+    # Use the model to predict the output-signals.
+    y_pred = model.predict(x)
+    
+    # The output of the model is between 0 and 1.
+    # Do an inverse map to get it back to the scale
+    # of the original data-set.
+    y_pred_rescaled = y_scaler.inverse_transform(y_pred[0])
+    
+    # For each output-signal.
+    for signal in range(len(target_names)):
+        # Get the output-signal predicted by the model.
+        signal_pred = y_pred_rescaled[:, signal]
+        
+        # Get the true output-signal from the data-set.
+        signal_true = y_true[:, signal]
+
+        # Make the plotting-canvas bigger.
+        plt.figure(figsize=(15,5))
+        
+        # Plot and compare the two signals.
+        plt.plot(signal_true, label='true')
+        plt.plot(signal_pred, label='pred')
+        
+        # Plot grey box for warmup-period.
+        p = plt.axvspan(0, warmup_steps, facecolor='black', alpha=0.15)
+        
+        # Plot labels etc.
+        plt.ylabel(target_names[signal])
+        plt.legend()
+        plt.show()
+
+# plot the true vs predicted values    
+plot_comparison(start_idx=1000, length=100, train=True)
