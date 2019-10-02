@@ -4,13 +4,11 @@ Created on Tue Oct  1 19:42:51 2019
 
 @author: Eric Born
 """
-
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, LSTM, CuDNNLSTM,\
                                     BatchNormalization, Flatten, GRU, Input,\
-                                    Embedding
-                                    
+                                    Embedding                                   
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint,\
                                               TensorBoard, ReduceLROnPlateau
 from tensorflow.python.keras.optimizers import RMSprop
@@ -33,32 +31,65 @@ import time
 np.set_printoptions(suppress=True)
 
 ###!!! Maybe only keep matches where the bot won, indicating good decision making?
-
+# path to data
 path = 'C:/botdata/'
 
 # list of all files
 files = os.listdir(path)
 
 # object for single array file, which equals a single game
-full_array = np.load(path + files[0], allow_pickle=True)
+#full_array = np.load(path + files[0], allow_pickle=True)
+
+# column list for all match data
+cols = ['minerals','gas','supply_cap', 'supply_army', 'supply_workers',
+        'nexus', 'c_pylons', 'assimilators', 'gateways', 'cybercore', 'robofac',
+        'stargate', 'robobay', 'k-structures', 'k-units', 'attack',
+        'assimilators', 'offensive_force', 'b_pylons', 'workers', 'distribute',
+        'nothing', 'expand', 'buildings', 'ZEALOT', 'STALKER', 'ADEPT',
+        'IMMORTAL', 'VOIDRAY', 'COLOSSUS', 'difficulty', 'outcome']
+
+# Single array df
+#full_df = pd.DataFrame(data=full_array,columns=cols)
+
+# define empty dataframe using columns previously defined
+full_df = pd.DataFrame(columns=cols)
+
+# loads each training data file, creates a df and appends to the original df
+for file in range(0, len(files)):
+    #print(np.load(path + files[file], allow_pickle=True))
+    if len(full_df) == 0:
+        full_df = pd.DataFrame(data=np.load(path + files[file], 
+                                            allow_pickle=True),columns=cols)
+    else:
+        df2 = pd.DataFrame(data=np.load(path + files[file], 
+                                allow_pickle=True),columns=cols)
+        full_df = full_df.append(df2)
 
 # setup x and y
 # x will be the supply_data inputs
 # y will be the action that was taken
 
-# array that contains supply data, all rows, index 0-14
-# 15 inputs
+# create values, the supply stats
+#df_values = full_df.iloc[:,0:15]
+x_data = full_df.iloc[:,0:15].values
+
+# create targets, the bot choices
+#df_targets = full_df.iloc[:,15:24]
+y_data = full_df.iloc[:,15:24].values
+
+
+# used for a single array load
 #supply_array = full_array[:,0:15]
-x_data = full_array[:,0:15]
+#x_data = full_array[:,0:15]
 
 # setup an array that only includes the action data index 15-23
 # 9 outputs
 #actions_array = full_array[:,15:24]
-y_data = full_array[:,15:24]
+#y_data = full_array[:,15:24]
 
-# 427 by 15 and by 9
-x_data.shape
-y_data.shape
+# 16777 by 15 and by 9
+print(x_data.shape)
+print(y_data.shape)
 
 # setup number to split for train/test
 num_train = int(0.9 * len(x_data))
@@ -75,11 +106,11 @@ len(y_train) + len(y_test)
 
 # input columns
 num_x_signals = x_data.shape[1]
-num_x_signals
+print(num_x_signals)
 
 # output columns
 num_y_signals = y_data.shape[1]
-num_y_signals
+print(num_y_signals)
 
 # Setup scalers for x and y
 x_scaler = MinMaxScaler()
@@ -91,8 +122,8 @@ y_train_scaled = y_scaler.fit_transform(y_train)
 y_test_scaled = y_scaler.fit_transform(y_test)
 
 # check shapes for the scaled sets
-x_train_scaled.shape
-y_train_scaled.shape
+print(x_train_scaled.shape)
+print(y_train_scaled.shape)
 
 # create a batch generator to feed the data into the NN
 def batch_generator(batch_size, sequence_length):
@@ -124,21 +155,25 @@ def batch_generator(batch_size, sequence_length):
 
 # larger batch size the more is fed to the GPU at once, adjust if there
 # are memory issues
-batch_size = 6
+batch_size = 256
 
 # TODO
 # This probably needs to be variable to account for different number of steps
 # per game due to variable game length
 # length of steps in the first game
-sequence_length = 12
+sequence_length = 350
 
 # create a generator object
 generator = batch_generator(batch_size=batch_size,
                             sequence_length=sequence_length)
 
+# generates a batch for x and y
 x_batch, y_batch = next(generator)
 
+print(x_batch.shape)
+print(y_batch.shape)
 
+# set aside some data for validation purposes
 validation_data = (np.expand_dims(x_test_scaled, axis=0),
                    np.expand_dims(y_test_scaled, axis=0))
 
@@ -248,3 +283,13 @@ model.fit_generator(generator=generator,
                     callbacks=callbacks)
 
 timings_list.append(['Model end:', time.time()])
+
+# load best model
+try:
+    model.load_weights(path_checkpoint)
+except Exception as error:
+    print("Error trying to load checkpoint.")
+    print(error)
+    
+result = model.evaluate(x=np.expand_dims(x_test_scaled, axis=0),
+                        y=np.expand_dims(y_test_scaled, axis=0))
