@@ -13,14 +13,14 @@ Also appends the outcome of the match to a csv file.
 import numpy as np
 import pandas as pd
 import random
-import keras
-import math
+#import math
 import time
 import csv
 import os
 
-# import asyncio
-# from absl import app
+# NN model specific
+from tensorflow.keras.models import load_model
+from sklearn.preprocessing import MinMaxScaler
 
 # pysc2 libraries
 from pysc2.agents import base_agent
@@ -144,18 +144,40 @@ unit_choice = ''
 
 # Creates a random number between 0-9
 # this is used in the main() to set the difficulty of the game
-diff = random.randrange(0,10)
+diff = 2 #random.randrange(0,10)
+
+diff_dict = {
+    0:'VeryEasy', 
+    1:'Easy', 
+    2:'Medium',
+    3:'MediumHard', 
+    4:'Hard', 
+    5:'Harder',
+    6:'VeryHard', 
+    7:'CheatMoney', 
+    8:'CheatVision', 
+    9:'CheatInsane'
+}
 
 # Isnt working because you cant pass the difficulty as a string
-# diff_list = [
-#     'Difficulty.VeryEasy', 'Difficulty.Easy', 'Difficulty.Medium,'
-#     'Difficulty.MediumHard', 'Difficulty.Hard', 'Difficulty.Harder',
-#     'Difficulty.VeryHard', 'Difficulty.CheatMoney', 'Difficulty.CheatVision', 
-#     'Difficulty.CheatInsane'
-# ]
+# diff_dict = {
+#     0:'Difficulty.VeryEasy', 
+#     1:'Difficulty.Easy', 
+#     2'Difficulty.Medium,'
+#     3'Difficulty.MediumHard', 
+#     4'Difficulty.Hard', 
+#     5'Difficulty.Harder',
+#     6'Difficulty.VeryHard', 
+#     7'Difficulty.CheatMoney', 
+#     8'Difficulty.CheatVision', 
+#     9'Difficulty.CheatInsane'
+# }
 
 # maps the functions from the pysc2 actions file
 FUNCTIONS = actions.FUNCTIONS
+
+# removes scientific notation from np prints, prints numbers as floats
+np.set_printoptions(suppress=True)
 
 # Bots current issues:
 # Troops need to move out to protect expanded bases
@@ -165,18 +187,22 @@ class BinaryBot(sc2.BotAI):
     def __init__(self, use_model=False):
         self.MAX_WORKERS = 50
         
+        # path to record csv
+        self.csv_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/Q-learn/record.csv'
+
         # Used to slow down the bots actions
         self.do_something_after = 0
         self.delay_time = 0
         self.delay = 25
 
-        # used to allow a trained model to chose actions instead of random
-        self.use_model = use_model
+        # used to scale the supply data before the model makes a prediction
+        self.x_scaler = MinMaxScaler()
 
-        #####
-        if self.use_model:
-            print("USING MODEL!")
-            self.model = keras.models.load_model("C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model/LSTM-3")
+        # set the path to the model
+        self.model_path = "C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model/CuDNNLSTM-1570055415.h5"
+
+        # used to load a trained model to choose actions instead of random
+        self.model = load_model(self.model_path)
         
         # stores actions taken
         self.action_data = np.zeros(9)
@@ -210,11 +236,24 @@ class BinaryBot(sc2.BotAI):
        
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
+    # Create a function to write the result to a text file
+    def write_txt(self, result, diff):
+        with open(self.text_path,'a') as textfile:
+            outcome = str(result) + ',' + str(diff) + '\n'
+            textfile.write(outcome)
+            textfile.close()
+
     # Create a function to write the result to a csv
-    def write_csv(self, game_result):
-        with open('record.csv','a', newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(str(game_result)+str(self.outcome_data[0]))
+#    def write_csv(self, game_result, difficulty):
+#        with open(self.csv_path,'a', newline='') as csvfile:
+#            writer = csv.writer(csvfile)
+#            result = [str(game_result), str(difficulty)]
+#            writer.writerow(result)
+                
+#    def write_csv(self, game_result):
+#        with open('record.csv','a', newline='') as csvfile:
+#                writer = csv.writer(csvfile)
+#                writer.writerow(game_result)
 
     def on_end(self, game_result):
         result = str(game_result)
@@ -222,8 +261,6 @@ class BinaryBot(sc2.BotAI):
         # Defeat
         if result == 'Result.Defeat':
             self.outcome_data[1] = -1
-#            self.training_data.append([self.supply_data, self.action_data, 
-#                                       self.troop_data, self.outcome_data])
             self.training_data.append([
                 self.state.score.collected_minerals,
                 self.state.score.collected_vespene,
@@ -239,17 +276,18 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.action_data)
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)
+            print(str(-1), diff_dict[diff])
 
-            self.write_csv(str(-1))
+            self.write_txt(-1, diff_dict[diff])
+            #self.write_csv(str(-1), diff_dict[diff])
+            #self.write_csv([-1])
+            
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
         # Win
         elif result == 'Result.Victory':
             self.outcome_data[1] = 1
-#            self.training_data.append([self.supply_data, self.action_data, 
-#                                       self.troop_data, self.outcome_data])
-            
             self.training_data.append([
                 self.state.score.collected_minerals,
                 self.state.score.collected_vespene,
@@ -265,16 +303,18 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.action_data)
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)
-
-            self.write_csv(1)
+            print(str(1), diff_dict[diff])
+            
+            #self.write_csv(1, diff_dict[diff])
+            self.write_txt(1, diff_dict[diff])
+            #self.write_csv([1])
+            
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
         # Tie
         else:
-#            self.outcome_data[1] = 0
-#            self.training_data.append([self.supply_data, self.action_data, 
-#                                       self.troop_data, self.outcome_data]
+            self.outcome_data[1] = 0
             self.training_data.append([
                 self.state.score.collected_minerals,
                 self.state.score.collected_vespene,
@@ -290,8 +330,12 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.action_data)
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)  
+            print(str(0), diff_dict[diff])
             
-            self.write_csv(0)
+            #self.write_csv(0, diff_dict[diff])
+            self.write_txt(0, diff_dict[diff])
+            #self.write_csv([0])
+
             np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
 
@@ -308,25 +352,6 @@ class BinaryBot(sc2.BotAI):
         # send starting chat message
         if iteration == 0:
             await self.chat_send("(glhf)")
-
-        # every 5th iteration the supply_data stats are recorded
-        # and all 4 data arrays are appended to training_data
-#        if iteration % 5 == 0:
-#            self.supply_data[0] = self.supply_cap
-#            self.supply_data[1] = self.supply_army
-#            self.supply_data[2] = self.supply_workers
-#            self.supply_data[3] = self.units(NEXUS).amount
-#            self.supply_data[4] = self.units(PYLON).amount
-#            self.supply_data[5] = self.units(ASSIMILATOR).amount
-#            self.supply_data[6] = self.units(GATEWAY).amount
-#            self.supply_data[7] = self.units(CYBERNETICSCORE).amount
-#            self.supply_data[8] = self.units(ROBOTICSFACILITY).amount
-#            self.supply_data[9] = self.units(STARGATE).amount
-#            self.supply_data[10] = self.units(ROBOTICSBAY).amount
-#            self.supply_data[11] = self.state.score.killed_value_structures
-#            self.supply_data[12] = self.state.score.killed_value_units
-#            self.training_data.append([self.supply_data, self.action_data,
-#                                       self.troop_data, self.outcome_data])
             
     # attempt to fix workers starting the warp in of a building
     # and not going back to work until its finished.
@@ -349,21 +374,18 @@ class BinaryBot(sc2.BotAI):
     # Action 1 - Attack
     async def attack(self):
         # print('attack')
-        #self.action_data = np.zeros(9)
         attack_amount = random.randrange(5, 10)
         if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, 
                                COLOSSUS]).amount > attack_amount:
             for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, 
                                          VOIDRAY, COLOSSUS]).idle:
                 await self.do(s.attack(self.find_target(self.state)))
-                #self.action_data[0] = 1
 
     # Action 2 - build assimilators
     # TODO
     # need to add check to move probes onto gas at this same step
     async def build_assimilators(self):
         # print('build_assimilators')
-        #self.action_data = np.zeros(9)
         if self.supply_cap > 16:
             for nexus in self.units(NEXUS).ready:
                 vaspenes = self.state.vespene_geyser.closer_than(15.0, nexus)
@@ -376,7 +398,6 @@ class BinaryBot(sc2.BotAI):
                     if not self.units(ASSIMILATOR).closer_than(
                                                     1.0, vaspene).exists:
                         await self.do(worker.build(ASSIMILATOR, vaspene))
-                        #self.action_data[1] = 1
    
     # Action 3 - build offensive force
     async def build_offensive_force(self):
@@ -390,8 +411,7 @@ class BinaryBot(sc2.BotAI):
         # is called to prevent object reference issues
         # in the training_data list
         self.troop_data = np.zeros(6)
-        
-        #self.action_data = np.zeros(8)
+
         if self.units(GATEWAY).ready.exists:
             #print('gateway exists')
             GATEWAY_IND = 1
@@ -460,8 +480,7 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(ZEALOT))
                 await self.do(gw.train(ZEALOT))
                 self.troop_data[0] = 1
-                #self.action_data[2] = 1
-        
+
         elif unit_choice == 'STALKER' and self.can_afford(STALKER) and \
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
@@ -469,7 +488,6 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(STALKER))
                 await self.do(gw.train(STALKER))
                 self.troop_data[1] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'ADEPT' and self.can_afford(ADEPT) and \
         self.supply_left >= 2:
@@ -478,7 +496,6 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(ADEPT))
                 await self.do(gw.train(ADEPT))
                 self.troop_data[2] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'IMMORTAL' and self.can_afford(IMMORTAL) and \
         self.supply_left >= 4:
@@ -487,7 +504,6 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(IMMORTAL))
                 await self.do(gw.train(IMMORTAL))
                 self.troop_data[3] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'VOIDRAY' and self.can_afford(VOIDRAY) and \
         self.supply_left >= 4:
@@ -496,7 +512,6 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(VOIDRAY))
                 await self.do(gw.train(VOIDRAY))
                 self.troop_data[4] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'COLOSSUS' and self.can_afford(COLOSSUS) and \
         self.supply_left >= 6:
@@ -505,32 +520,24 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(COLOSSUS))
                 await self.do(gw.train(COLOSSUS))
                 self.troop_data[5] = 1
-                #self.action_data[2] = 1
-        #else:
-        #    await self.build_pylons()
 
     async def do_nothing(self):
         #print('do_nothing')
-        #self.action_data = np.zeros(8)
-        #self.action_data[3] = 1
         wait = random.randrange(10, 30)/100
         self.do_something_after = self.time_loop + wait
 
     # builds 16 workers per nexus up to a maximum of 50
     async def build_workers(self):
         #print('build_workers')
-        #self.action_data = np.zeros(8)
         if (self.units(NEXUS).amount * 16) > self.units(PROBE).amount and \
             self.units(PROBE).amount < self.MAX_WORKERS:
             for nexus in self.units(NEXUS).ready.idle:
                 if self.can_afford(PROBE):
                     await self.do(nexus.train(PROBE))
-                    #self.action_data[4] = 1
 
 
     async def build_pylons(self):
         #print('build_pylons')
-        #self.action_data = np.zeros(8)
         if self.supply_cap != 200 and self.supply_left < 10: 
             #and not self.already_pending(PYLON): #dont care, build another
             nexuses = self.units(NEXUS).ready
@@ -539,22 +546,18 @@ class BinaryBot(sc2.BotAI):
                     await self.build(PYLON, near=
                                      self.units(NEXUS).first.position.towards(
                                              self.game_info.map_center, 5))
-                    #self.action_data[5] = 1
 
     
     # Added not already_pending trying to prevent multiple
     # being built right next to each other
     async def expand(self):
         #print('expand')
-        #self.action_data = np.zeros(8)
         if self.can_afford(NEXUS) and \
             not self.already_pending(NEXUS):
             await self.expand_now()
-            #self.action_data[6] = 1
 
     async def offensive_force_buildings(self):
         #print('offensive_force_buildings')
-        #self.action_data = np.zeros(8)
         # Checks for a pylon as an indicator of where to build
         # small area around pylon is needed to place another building
         if self.units(PYLON).ready.exists:
@@ -565,32 +568,27 @@ class BinaryBot(sc2.BotAI):
                 not self.already_pending(GATEWAY):
                 #and self.units(GATEWAY).amount <= 2:
                 await self.build(GATEWAY, near=pylon)
-                #self.action_data[7] = 1
             
             if self.units(GATEWAY).ready.exists and \
                self.units(CYBERNETICSCORE).amount < 1: # Added to limit to 1
                 if self.can_afford(CYBERNETICSCORE) and not \
                    self.already_pending(CYBERNETICSCORE):
                     await self.build(CYBERNETICSCORE, near=pylon)
-                    #self.action_data[7] = 1
 
             if self.units(CYBERNETICSCORE).ready.exists:
                 if self.can_afford(ROBOTICSFACILITY) and not \
                     self.already_pending(ROBOTICSFACILITY):
                     await self.build(ROBOTICSFACILITY, near=pylon)
-                    #self.action_data[7] = 1
             
             if self.units(CYBERNETICSCORE).ready.exists:
                 if self.can_afford(STARGATE) and not \
                     self.already_pending(STARGATE):
                     await self.build(STARGATE, near=pylon)
-                    #self.action_data[7] = 1
 
             if self.units(ROBOTICSFACILITY).ready.exists:
                 if self.can_afford(ROBOTICSBAY) and not \
                     self.already_pending(ROBOTICSBAY):
                     await self.build(ROBOTICSBAY, near=pylon)
-                    #self.action_data[7] = 1
 
     # self.state.game_loop moves at 22.4 per second on faster game speed
     # Hacky attempt at throttling the bots actions using the time from
@@ -607,21 +605,43 @@ class BinaryBot(sc2.BotAI):
             # is called to prevent object reference issues
             # in the training_data list
             self.action_data = np.zeros(9)
-            action_choice = random.randrange(0, 9)
+
+            # records all of the current stats about the match
+            # this data is then fed into the model and it makes
+            # a prediction on which move to use next
+            self.supply_data[0] = self.supply_cap
+            self.supply_data[1] = self.supply_army
+            self.supply_data[2] = self.supply_workers
+            self.supply_data[3] = self.units(NEXUS).amount
+            self.supply_data[4] = self.units(PYLON).amount
+            self.supply_data[5] = self.units(ASSIMILATOR).amount
+            self.supply_data[6] = self.units(GATEWAY).amount
+            self.supply_data[7] = self.units(CYBERNETICSCORE).amount
+            self.supply_data[8] = self.units(ROBOTICSFACILITY).amount
+            self.supply_data[9] = self.units(STARGATE).amount
+            self.supply_data[10] = self.units(ROBOTICSBAY).amount
+            self.supply_data[11] = self.state.score.killed_value_structures
+            self.supply_data[12] = self.state.score.killed_value_units
+
+            # shape data before scaling
+            x_data = self.supply_data.reshape(1, -1)
+
+            # scale the data before prediction
+            x_test_scaled = self.x_scaler.fit_transform(x_data)
+            
+            # since the predictions are just percentage chances between each of the
+            # actions we take the maximum percentage as the action choice.
+            # since x_test_scaled is a single row we have to manipulate
+            # the shape of the data to something the model is used to seeing.
+            action_choice = np.argmax(self.model.predict(np.array([x_test_scaled,])))
+
+            #action_choice = random.randrange(0, 9)
             self.action_data[action_choice] = 1
-            
-            # if self.use_model:
-            #     prediction = self.model.predict([self.flipped.reshape(
-                                                  #[-1, 176, 200, 3])])
-            #     choice = np.argmax(prediction[0])
-            # else:
-            #     choice = random.randrange(0, 9)
-            #print(self.actions[choice])
-            
+                        
             # appends all supply data to the training_data list
             # then extends that list with the action, troop and outcome data
             # in the last index with -1
-            # on the next loop it appends a new list to the origina list 
+            # on the next loop it appends a new list to the original list 
             # and repeats the process
             if action_choice == 2:
                 self.training_data.append([
