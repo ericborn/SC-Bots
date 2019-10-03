@@ -201,7 +201,7 @@ class BinaryBot(sc2.BotAI):
         self.outcome_data[0] = diff
 
         # Setup actions dictionary
-        self.actions = {
+        self.actions_dict = {
             0: self.attack,
             1: self.build_assimilators,
             2: self.build_offensive_force,
