@@ -6,7 +6,7 @@ Created on Tue Oct  1 19:42:51 2019
 """
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Dropout, LSTM, CuDNNLSTM,\
                                     BatchNormalization, Flatten, GRU, Input,\
                                     Embedding                                   
@@ -261,7 +261,7 @@ model.compile(loss='categorical_crossentropy', optimizer='adam',
 print(model.summary())
 
 # build writing checkpoints
-path_checkpoint = 'LSTM_expanded_checkpoint.keras'
+path_checkpoint = 'CuDNNLSTM_expanded_checkpoint.keras'
 callback_checkpoint = ModelCheckpoint(filepath=path_checkpoint,
                                       monitor='val_loss',
                                       verbose=1,
@@ -274,7 +274,7 @@ callback_checkpoint = ModelCheckpoint(filepath=path_checkpoint,
 
 # setup tensorboard
 callback_tensorboard = TensorBoard(
-    log_dir=r'C:\Users\TomBrody\Desktop\School\767 ML\SC Bot\NN\logs\CuDNNLSTM',
+    log_dir=r'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/logs/CuDNNLSTM',
                                    histogram_freq=0,
                                    write_graph=False)
 
@@ -312,73 +312,73 @@ except Exception as error:
     print(error)
 
 # path to save the model
-path = r'C:\Users\TomBrody\Desktop\School\767 ML\SC Bot\NN\model\\'
+path = r'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model//'
 
 # path plus model and time
-model.save(path+'CuDNNLSTM-{}'.format(str(int(time.time()))))
+model.save(path+'CuDNNLSTM-{}'.format(str(int(time.time())))+'.h5')
     
 result = model.evaluate(x=np.expand_dims(x_test_scaled, axis=0),
                         y=np.expand_dims(y_test_scaled, axis=0))
 
-def plot_comparison(start_idx, length=100, train=True):
-    """
-    Plot the predicted and true output-signals.
-    
-    :param start_idx: Start-index for the time-series.
-    :param length: Sequence-length to process and plot.
-    :param train: Boolean whether to use training- or test-set.
-    """
-    
-    if train:
-        # Use training-data.
-        x = x_train_scaled
-        y_true = y_train
-    else:
-        # Use test-data.
-        x = x_test_scaled
-        y_true = y_test
-    
-    # End-index for the sequences.
-    end_idx = start_idx + length
-    
-    # Select the sequences from the given start-index and
-    # of the given length.
-    x = x[start_idx:end_idx]
-    y_true = y_true[start_idx:end_idx]
-    
-    # Input-signals for the model.
-    x = np.expand_dims(x, axis=0)
-
-    # Use the model to predict the output-signals.
-    y_pred = model.predict(x)
-    
-    # The output of the model is between 0 and 1.
-    # Do an inverse map to get it back to the scale
-    # of the original data-set.
-    y_pred_rescaled = y_scaler.inverse_transform(y_pred[0])
-    
-    # For each output-signal.
-    for signal in range(len(target_names)):
-        # Get the output-signal predicted by the model.
-        signal_pred = y_pred_rescaled[:, signal]
-        
-        # Get the true output-signal from the data-set.
-        signal_true = y_true[:, signal]
-
-        # Make the plotting-canvas bigger.
-        plt.figure(figsize=(15,5))
-        
-        # Plot and compare the two signals.
-        plt.plot(signal_true, label='true')
-        plt.plot(signal_pred, label='pred')
-        
-        # Plot grey box for warmup-period.
-        p = plt.axvspan(0, warmup_steps, facecolor='black', alpha=0.15)
-        
-        # Plot labels etc.
-        plt.ylabel(target_names[signal])
-        plt.legend()
-        plt.show()
-
-# plot the true vs predicted values    
-plot_comparison(start_idx=10000, length=5000, train=True)
+#def plot_comparison(start_idx, length=100, train=True):
+#    """
+#    Plot the predicted and true output-signals.
+#    
+#    :param start_idx: Start-index for the time-series.
+#    :param length: Sequence-length to process and plot.
+#    :param train: Boolean whether to use training- or test-set.
+#    """
+#    
+#    if train:
+#        # Use training-data.
+#        x = x_train_scaled
+#        y_true = y_train
+#    else:
+#        # Use test-data.
+#        x = x_test_scaled
+#        y_true = y_test
+#    
+#    # End-index for the sequences.
+#    end_idx = start_idx + length
+#    
+#    # Select the sequences from the given start-index and
+#    # of the given length.
+#    x = x[start_idx:end_idx]
+#    y_true = y_true[start_idx:end_idx]
+#    
+#    # Input-signals for the model.
+#    x = np.expand_dims(x, axis=0)
+#
+#    # Use the model to predict the output-signals.
+#    y_pred = model.predict(x)
+#    
+#    # The output of the model is between 0 and 1.
+#    # Do an inverse map to get it back to the scale
+#    # of the original data-set.
+#    y_pred_rescaled = y_scaler.inverse_transform(y_pred[0])
+#    
+#    # For each output-signal.
+#    for signal in range(len(target_names)):
+#        # Get the output-signal predicted by the model.
+#        signal_pred = y_pred_rescaled[:, signal]
+#        
+#        # Get the true output-signal from the data-set.
+#        signal_true = y_true[:, signal]
+#
+#        # Make the plotting-canvas bigger.
+#        plt.figure(figsize=(15,5))
+#        
+#        # Plot and compare the two signals.
+#        plt.plot(signal_true, label='true')
+#        plt.plot(signal_pred, label='pred')
+#        
+#        # Plot grey box for warmup-period.
+#        p = plt.axvspan(0, warmup_steps, facecolor='black', alpha=0.15)
+#        
+#        # Plot labels etc.
+#        plt.ylabel(target_names[signal])
+#        plt.legend()
+#        plt.show()
+#
+## plot the true vs predicted values    
+#plot_comparison(start_idx=10000, length=5000, train=True)
