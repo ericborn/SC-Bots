@@ -140,7 +140,7 @@ unit_choice = ''
 
 # Creates a random number between 0-9
 # this is used in the main() to set the difficulty of the game
-#diff = random.randrange(0,10)
+diff = 2 #random.randrange(0,10)
 
 diff_dict = {
     0:'VeryEasy', 
@@ -198,7 +198,7 @@ class BinaryBot(sc2.BotAI):
         
         # Store the difficulty setting in the array that is used as output data
         self.outcome_data = np.zeros(2)
-        self.outcome_data[0] = 'Medium' #diff
+        self.outcome_data[0] = diff
 
         # Setup actions dictionary
         self.actions = {
@@ -225,7 +225,7 @@ class BinaryBot(sc2.BotAI):
     # Create a function to write the result to a text file
     def write_txt(self, result, diff):
         with open(self.text_path,'a') as textfile:
-            outcome = str(result) + ',' + str([diff]) + '\n'
+            outcome = str(result) + ',' + str(diff) + '\n'
             textfile.write(outcome)
             textfile.close()
 
@@ -252,6 +252,8 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)
 
+            self.write_txt(str(-1), diff_dict[diff])
+
             np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
@@ -275,7 +277,7 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)
 
-            self.write_txt(str(-1), diff_dict[diff])
+            self.write_txt(str(1), diff_dict[diff])
 
             np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
@@ -300,7 +302,7 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)  
 
-            self.write_txt(str(-1), diff_dict[diff])
+            self.write_txt(str(0), diff_dict[diff])
 
             np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
@@ -619,76 +621,76 @@ class BinaryBot(sc2.BotAI):
             self.delay_time = self.state.game_loop + self.delay
 
 # Fixed difficulty
-def main():
-    run_game(maps.get("AbyssalReefLE"), [
-        Bot(Race.Protoss, BinaryBot()),
-        Computer(Race.Terran, Difficulty.Medium)
-        ], realtime=False)
-
-if __name__ == '__main__':
-    main()
-
-# Random difficulty
 # def main():
-#    if diff == 0:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.VeryEasy)
-#            ], realtime=False)
-
-#    if diff == 1:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Easy)
-#            ], realtime=False)
-   
-#    if diff == 2:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Medium)
-#            ], realtime=False)
-
-#    if diff == 3:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.MediumHard)
-#            ], realtime=False)
-   
-#    if diff == 4:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Hard)
-#            ], realtime=False)
-
-#    if diff == 5:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.Harder)
-#            ], realtime=False)
-   
-#    if diff == 6:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.VeryHard)
-#            ], realtime=False)
-
-#    if diff == 7:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.CheatVision)
-#            ], realtime=False)
-
-#    if diff == 8:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.CheatMoney)
-#            ], realtime=False)
-
-#    if diff == 9:
-#        run_game(maps.get("AbyssalReefLE"), [
-#            Bot(Race.Protoss, BinaryBot()),
-#            Computer(Race.Terran, Difficulty.CheatInsane)
-#            ], realtime=False)
+#     run_game(maps.get("AbyssalReefLE"), [
+#         Bot(Race.Protoss, BinaryBot()),
+#         Computer(Race.Terran, Difficulty.Medium)
+#         ], realtime=False)
 
 # if __name__ == '__main__':
-#    main()
+#     main()
+
+# Random difficulty
+def main():
+   if diff == 0:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.VeryEasy)
+           ], realtime=False)
+
+   if diff == 1:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Easy)
+           ], realtime=False)
+   
+   if diff == 2:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Medium)
+           ], realtime=False)
+
+   if diff == 3:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.MediumHard)
+           ], realtime=False)
+   
+   if diff == 4:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Hard)
+           ], realtime=False)
+
+   if diff == 5:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.Harder)
+           ], realtime=False)
+   
+   if diff == 6:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.VeryHard)
+           ], realtime=False)
+
+   if diff == 7:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.CheatVision)
+           ], realtime=False)
+
+   if diff == 8:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.CheatMoney)
+           ], realtime=False)
+
+   if diff == 9:
+       run_game(maps.get("AbyssalReefLE"), [
+           Bot(Race.Protoss, BinaryBot()),
+           Computer(Race.Terran, Difficulty.CheatInsane)
+           ], realtime=False)
+
+if __name__ == '__main__':
+   main()
