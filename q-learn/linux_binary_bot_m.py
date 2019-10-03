@@ -140,7 +140,20 @@ unit_choice = ''
 
 # Creates a random number between 0-9
 # this is used in the main() to set the difficulty of the game
-diff = random.randrange(0,10)
+#diff = random.randrange(0,10)
+
+diff_dict = {
+    0:'VeryEasy', 
+    1:'Easy', 
+    2:'Medium',
+    3:'MediumHard', 
+    4:'Hard', 
+    5:'Harder',
+    6:'VeryHard', 
+    7:'CheatMoney', 
+    8:'CheatVision', 
+    9:'CheatInsane'
+}
 
 # Isnt working because you cant pass the difficulty as a string
 # diff_list = [
@@ -175,7 +188,7 @@ class BinaryBot(sc2.BotAI):
 
         # store data relating to current troop/building numbers
         # updated every 5th iteration
-        self.supply_data = np.zeros(13)
+        self.supply_data = np.zeros(15)
 
         # stores data related to which troops were built
         self.troop_data = np.zeros(6)
@@ -185,7 +198,7 @@ class BinaryBot(sc2.BotAI):
         
         # Store the difficulty setting in the array that is used as output data
         self.outcome_data = np.zeros(2)
-        self.outcome_data[0] = diff
+        self.outcome_data[0] = 'Medium' #diff
 
         # Setup actions dictionary
         self.actions = {
@@ -206,11 +219,15 @@ class BinaryBot(sc2.BotAI):
         
         # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
-    # Create a function to write the result to a csv
-    def write_csv(self, game_result):
-        with open('record.csv','a', newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(str(game_result))
+        #path to textfile on linux is the root folder
+        self.text_path = "/home/eric_born85/record.txt"
+
+    # Create a function to write the result to a text file
+    def write_txt(self, result, diff):
+        with open(self.text_path,'a') as textfile:
+            outcome = str(result) + ',' + str([diff]) + '\n'
+            textfile.write(outcome)
+            textfile.close()
 
     def on_end(self, game_result):
         result = str(game_result)
@@ -218,24 +235,73 @@ class BinaryBot(sc2.BotAI):
         # Defeat
         if result == 'Result.Defeat':
             self.outcome_data[1] = -1
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
-            self.write_csv(str(-1))
+
+            self.training_data.append([
+                self.state.score.collected_minerals,
+                self.state.score.collected_vespene,
+                self.supply_cap, self.supply_army,
+                self.supply_workers, self.units(NEXUS).amount,
+                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                self.units(ROBOTICSFACILITY).amount, 
+                self.units(STARGATE).amount, self.units(ROBOTICSBAY).amount,
+                self.state.score.killed_value_structures,
+                self.state.score.killed_value_units
+            ])
+            self.training_data[-1].extend(self.action_data)
+            self.training_data[-1].extend(self.troop_data)
+            self.training_data[-1].extend(self.outcome_data)
+
             np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
         # Win
         elif result == 'Result.Victory':
             self.outcome_data[1] = 1
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
-            self.write_csv(1)
+            
+            self.training_data.append([
+                self.state.score.collected_minerals,
+                self.state.score.collected_vespene,
+                self.supply_cap, self.supply_army,
+                self.supply_workers, self.units(NEXUS).amount,
+                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                self.units(ROBOTICSBAY).amount,
+                self.state.score.killed_value_structures,
+                self.state.score.killed_value_units
+            ])
+            self.training_data[-1].extend(self.action_data)
+            self.training_data[-1].extend(self.troop_data)
+            self.training_data[-1].extend(self.outcome_data)
+
+            self.write_txt(str(-1), diff_dict[diff])
+
             np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
         
         # Tie
         else:
             self.outcome_data[1] = 0
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
-            self.write_csv(0)
+
+            self.training_data.append([
+                self.state.score.collected_minerals,
+                self.state.score.collected_vespene,
+                self.supply_cap, self.supply_army,
+                self.supply_workers, self.units(NEXUS).amount,
+                self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                self.units(ROBOTICSBAY).amount,
+                self.state.score.killed_value_structures,
+                self.state.score.killed_value_units
+            ])
+            self.training_data[-1].extend(self.action_data)
+            self.training_data[-1].extend(self.troop_data)
+            self.training_data[-1].extend(self.outcome_data)  
+
+            self.write_txt(str(-1), diff_dict[diff])
+
             np.save("/home/eric_born85/botdata/{}.npy".format(str(int(time.time()))),
                     np.array(self.training_data))
 
@@ -251,25 +317,6 @@ class BinaryBot(sc2.BotAI):
         # send starting chat message
         if iteration == 0:
             await self.chat_send("(glhf)")
-
-        # TODO 
-        # May need to record this data every so many steps throughout the game
-        # instead of just once at the end
-        
-        if iteration % 5 == 0:
-            self.supply_data[0] = self.supply_cap
-            self.supply_data[1] = self.supply_army
-            self.supply_data[2] = self.supply_workers
-            self.supply_data[3] = self.units(NEXUS).amount
-            self.supply_data[4] = self.units(PYLON).amount
-            self.supply_data[5] = self.units(ASSIMILATOR).amount
-            self.supply_data[6] = self.units(GATEWAY).amount
-            self.supply_data[7] = self.units(CYBERNETICSCORE).amount
-            self.supply_data[8] = self.units(ROBOTICSFACILITY).amount
-            self.supply_data[9] = self.units(STARGATE).amount
-            self.supply_data[10] = self.units(ROBOTICSBAY).amount
-            self.supply_data[11] = self.state.score.killed_value_structures
-            self.supply_data[12] = self.state.score.killed_value_units
 
     # attempt to fix workers starting the warp in of a building
     # and not going back to work until its finished.
@@ -292,19 +339,15 @@ class BinaryBot(sc2.BotAI):
     # Action 1 - Attack
     async def attack(self):
         # print('attack')
-        #self.action_data = np.zeros(9)
         attack_amount = random.randrange(5, 10)
         if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).amount > attack_amount:
             for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, COLOSSUS]).idle:
                 await self.do(s.attack(self.find_target(self.state)))
-                #self.action_data[0] = 1
 
     # Action 2 - build assimilators
     # TODO
     # need to add check to move probes onto gas at this same step
     async def build_assimilators(self):
-        # print('build_assimilators')
-        #self.action_data = np.zeros(9)
         if self.supply_cap > 16:
             for nexus in self.units(NEXUS).ready:
                 vaspenes = self.state.vespene_geyser.closer_than(15.0, nexus)
@@ -317,7 +360,6 @@ class BinaryBot(sc2.BotAI):
                     if not self.units(ASSIMILATOR).closer_than(
                                                     1.0, vaspene).exists:
                         await self.do(worker.build(ASSIMILATOR, vaspene))
-                        #self.action_data[1] = 1
    
     # Action 3 - build offensive force
     async def build_offensive_force(self):
@@ -325,7 +367,7 @@ class BinaryBot(sc2.BotAI):
         # updates variables that indicate if a building exists
         # used to check if a unit can be built
         self.troop_data = np.zeros(6)
-        #self.action_data = np.zeros(8)
+
         if self.units(GATEWAY).ready.exists:
             #print('gateway exists')
             GATEWAY_IND = 1
@@ -391,17 +433,15 @@ class BinaryBot(sc2.BotAI):
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(ZEALOT))
-                await self.do(gw.train(ZEALOT))
                 self.troop_data[0] = 1
-                #self.action_data[2] = 1
         
         elif unit_choice == 'STALKER' and self.can_afford(STALKER) and \
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(STALKER))
                 await self.do(gw.train(STALKER))
+                await self.do(gw.train(STALKER))
                 self.troop_data[1] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'ADEPT' and self.can_afford(ADEPT) and \
         self.supply_left >= 2:
@@ -409,7 +449,6 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(ADEPT))
                 await self.do(gw.train(ADEPT))
                 self.troop_data[2] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'IMMORTAL' and self.can_afford(IMMORTAL) and \
         self.supply_left >= 4:
@@ -417,7 +456,6 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(IMMORTAL))
                 await self.do(gw.train(IMMORTAL))
                 self.troop_data[3] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'VOIDRAY' and self.can_afford(VOIDRAY) and \
         self.supply_left >= 4:
@@ -425,7 +463,6 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(VOIDRAY))
                 await self.do(gw.train(VOIDRAY))
                 self.troop_data[4] = 1
-                #self.action_data[2] = 1
 
         elif unit_choice == 'COLOSSUS' and self.can_afford(COLOSSUS) and \
         self.supply_left >= 6:
@@ -433,32 +470,26 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(COLOSSUS))
                 await self.do(gw.train(COLOSSUS))
                 self.troop_data[5] = 1
-                #self.action_data[2] = 1
-        else:
-            self.build_pylons()
+        # commented out, was building too many pylons
+        # else:
+        #     self.build_pylons()
 
     async def do_nothing(self):
         #print('do_nothing')
-        #self.action_data = np.zeros(8)
-        #self.action_data[3] = 1
         wait = random.randrange(10, 30)/100
         self.do_something_after = self.time_loop + wait
 
     # builds 16 workers per nexus up to a maximum of 50
     async def build_workers(self):
         #print('build_workers')
-        #self.action_data = np.zeros(8)
         if (self.units(NEXUS).amount * 16) > self.units(PROBE).amount and \
             self.units(PROBE).amount < self.MAX_WORKERS:
             for nexus in self.units(NEXUS).ready.idle:
                 if self.can_afford(PROBE):
                     await self.do(nexus.train(PROBE))
-                    #self.action_data[4] = 1
-
 
     async def build_pylons(self):
         #print('build_pylons')
-        #self.action_data = np.zeros(8)
         if self.supply_cap != 200: 
         #self.supply_left < 10 and not 
             #and not self.already_pending(PYLON): #dont care, build another
@@ -466,22 +497,17 @@ class BinaryBot(sc2.BotAI):
             if nexuses.exists:
                 if self.can_afford(PYLON):
                     await self.build(PYLON, near=self.units(NEXUS).first.position.towards(self.game_info.map_center, 5))
-                    #self.action_data[5] = 1
-
     
     # Added not already_pending trying to prevent multiple
     # being built right next to each other
     async def expand(self):
         #print('expand')
-        #self.action_data = np.zeros(8)
         if self.can_afford(NEXUS) and \
             not self.already_pending(NEXUS):
             await self.expand_now()
-            #self.action_data[6] = 1
 
     async def offensive_force_buildings(self):
         #print('offensive_force_buildings')
-        #self.action_data = np.zeros(8)
         # Checks for a pylon as an indicator of where to build
         # small area around pylon is needed to place another building
         if self.units(PYLON).ready.exists:
@@ -492,32 +518,27 @@ class BinaryBot(sc2.BotAI):
                 not self.already_pending(GATEWAY):
                 #and self.units(GATEWAY).amount <= 2:
                 await self.build(GATEWAY, near=pylon)
-                #self.action_data[7] = 1
             
             if self.units(GATEWAY).ready.exists and \
                self.units(CYBERNETICSCORE).amount < 1: # Added to limit to 1
                 if self.can_afford(CYBERNETICSCORE) and not \
                    self.already_pending(CYBERNETICSCORE):
                     await self.build(CYBERNETICSCORE, near=pylon)
-                    #self.action_data[7] = 1
 
             if self.units(CYBERNETICSCORE).ready.exists:
                 if self.can_afford(ROBOTICSFACILITY) and not \
                     self.already_pending(ROBOTICSFACILITY):
                     await self.build(ROBOTICSFACILITY, near=pylon)
-                    #self.action_data[7] = 1
             
             if self.units(CYBERNETICSCORE).ready.exists:
                 if self.can_afford(STARGATE) and not \
                     self.already_pending(STARGATE):
                     await self.build(STARGATE, near=pylon)
-                    #self.action_data[7] = 1
 
             if self.units(ROBOTICSFACILITY).ready.exists:
                 if self.can_afford(ROBOTICSBAY) and not \
                     self.already_pending(ROBOTICSBAY):
                     await self.build(ROBOTICSBAY, near=pylon)
-                    #self.action_data[7] = 1
 
     # self.state.game_loop moves at 22.4 per second on faster game speed
     # Hacky attempt at throttling the bots actions using the time from
@@ -527,23 +548,74 @@ class BinaryBot(sc2.BotAI):
     async def smart_action(self):
         if self.state.game_loop > self.delay_time and \
             self.time_loop > self.do_something_after:
+            
+            # choses random number which represents the action
+            # being carried out on the next step
+            # re-initialized each time smart_action
+            # is called to prevent object reference issues
+            # in the training_data list
             self.action_data = np.zeros(9)
             
-            choice = random.randrange(0, 9)
-            self.action_data[choice] = 1
+            # random action replaced by model prediction
+            action_choice = random.randrange(0, 9)
+            self.action_data[action_choice] = 1
             
             # if self.use_model:
-            #     prediction = self.model.predict([self.flipped.reshape([-1, 176, 200, 3])])
+            #     prediction = self.model.predict([self.flipped.reshape(
+                                                  #[-1, 176, 200, 3])])
             #     choice = np.argmax(prediction[0])
             # else:
             #     choice = random.randrange(0, 9)
             #print(self.actions[choice])
             
+            # appends all supply data to the training_data list
+            # then extends that list with the action, troop and outcome data
+            # in the last index with -1
+            # on the next loop it appends a new list to the origina list 
+            # and repeats the process
+            if action_choice == 2:
+                self.training_data.append([
+                    self.state.score.collected_minerals,
+                    self.state.score.collected_vespene,
+                    self.supply_cap, self.supply_army,
+                    self.supply_workers, self.units(NEXUS).amount,
+                    self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                    self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                    self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                    self.units(ROBOTICSBAY).amount,
+                    self.state.score.killed_value_structures,
+                    self.state.score.killed_value_units
+                ])
+                self.training_data[-1].extend(self.action_data)
+                self.training_data[-1].extend(self.troop_data)
+                self.training_data[-1].extend(self.outcome_data)
+            else:
+                self.training_data.append([
+                    self.state.score.collected_minerals,
+                    self.state.score.collected_vespene,
+                    self.supply_cap, self.supply_army,
+                    self.supply_workers, self.units(NEXUS).amount,
+                    self.units(PYLON).amount, self.units(ASSIMILATOR).amount,
+                    self.units(GATEWAY).amount, self.units(CYBERNETICSCORE).amount,
+                    self.units(ROBOTICSFACILITY).amount, self.units(STARGATE).amount,
+                    self.units(ROBOTICSBAY).amount,
+                    self.state.score.killed_value_structures,
+                    self.state.score.killed_value_units
+                ])
+                self.training_data[-1].extend(self.action_data)
+                self.training_data[-1].extend([0,0,0,0,0,0])
+                self.training_data[-1].extend(self.outcome_data)
+            
+            # print various parts from training_data
+            #print(self.training_data[-1][0:2])
+            
             try:
-                await self.actions[choice]()
+                await self.actions_dict[action_choice]()
             except Exception as e:
                 print(str(e))
-            self.training_data.append([self.supply_data, self.action_data, self.troop_data, self.outcome_data])
+            # Only gets appended
+            # self.training_data.append([self.supply_data, self.action_data, 
+            #                            self.troop_data, self.outcome_data])
             self.delay_time = self.state.game_loop + self.delay
 
 # Fixed difficulty
