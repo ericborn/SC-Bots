@@ -189,6 +189,7 @@ class BinaryBot(sc2.BotAI):
         
         # path to record csv
         self.csv_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/Q-learn/record.csv'
+        self.text_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/Q-learn/record.txt'
 
         # Used to slow down the bots actions
         self.do_something_after = 0
@@ -199,7 +200,7 @@ class BinaryBot(sc2.BotAI):
         self.x_scaler = MinMaxScaler()
 
         # set the path to the model
-        self.model_path = "C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model/CuDNNLSTM-1570055415.h5"
+        self.model_path = "C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model/dataCuDNNLSTM-1570312808.h5"
 
         # used to load a trained model to choose actions instead of random
         self.model = load_model(self.model_path)
@@ -233,9 +234,38 @@ class BinaryBot(sc2.BotAI):
             7: self.expand,
             8: self.offensive_force_buildings
         }
+        
+#        self.action_count = {
+#            0: 1,
+#            1: 1,
+#            2: 1,
+#            3: 1,
+#            4: 1,
+#            5: 1,
+#            6: 1,
+#            7: 1,
+#            8: 1
+#        }
+        
+        
        
-        # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
-
+    # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
+    
+    def reset_counts():
+        global action_count
+        action_count = {
+            0: 1,
+            1: 1,
+            2: 1,
+            3: 1,
+            4: 1,
+            5: 1,
+            6: 1,
+            7: 1,
+            8: 1
+        }
+    
+    
     # Create a function to write the result to a text file
     def write_txt(self, result, diff):
         with open(self.text_path,'a') as textfile:
@@ -348,10 +378,34 @@ class BinaryBot(sc2.BotAI):
         # functions to select next action and send idle workers to a task
         await self.smart_action()
         await self.back_to_work()
+        await self.first_pylon()
 
         # send starting chat message
         if iteration == 0:
             await self.chat_send("(glhf)")
+    
+    #!!! NOT FIRING!!!
+    async def first_pylon(self):
+        #print('first pylon')
+        if not self.already_pending(PYLON) and self.units(PYLON).amount == 0:
+            nexuses = self.units(NEXUS).ready
+            if nexuses.exists:
+                if self.can_afford(PYLON):
+                    await self.build(PYLON, near=
+                                     self.units(NEXUS).first.position.towards(
+                                             self.game_info.map_center, 5))
+
+#    async def build_pylons(self):
+#        #print('build_pylons')
+#        if self.supply_cap != 200 and self.supply_left < 10: 
+#            #and not self.already_pending(PYLON): #dont care, build another
+#            nexuses = self.units(NEXUS).ready
+#            if nexuses.exists:
+#                if self.can_afford(PYLON):
+#                    await self.build(PYLON, near=
+#                                     self.units(NEXUS).first.position.towards(
+#                                             self.game_info.map_center, 5))
+
             
     # attempt to fix workers starting the warp in of a building
     # and not going back to work until its finished.
@@ -371,7 +425,7 @@ class BinaryBot(sc2.BotAI):
             else:
                 return self.enemy_start_locations[0]
                 
-    # Action 1 - Attack
+    # Action 0 - Attack
     async def attack(self):
         # print('attack')
         attack_amount = random.randrange(5, 10)
@@ -381,7 +435,7 @@ class BinaryBot(sc2.BotAI):
                                          VOIDRAY, COLOSSUS]).idle:
                 await self.do(s.attack(self.find_target(self.state)))
 
-    # Action 2 - build assimilators
+    # Action 1 - build assimilators
     # TODO
     # need to add check to move probes onto gas at this same step
     async def build_assimilators(self):
@@ -399,7 +453,7 @@ class BinaryBot(sc2.BotAI):
                                                     1.0, vaspene).exists:
                         await self.do(worker.build(ASSIMILATOR, vaspene))
    
-    # Action 3 - build offensive force
+    # Action 2 - build offensive force
     async def build_offensive_force(self):
         # print('build_offensive_force')
         # updates variables that indicate if a building exists
@@ -477,8 +531,6 @@ class BinaryBot(sc2.BotAI):
         self.supply_left >= 2:
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(ZEALOT))
-                await self.do(gw.train(ZEALOT))
-                await self.do(gw.train(ZEALOT))
                 self.troop_data[0] = 1
 
         elif unit_choice == 'STALKER' and self.can_afford(STALKER) and \
@@ -520,22 +572,8 @@ class BinaryBot(sc2.BotAI):
                 await self.do(gw.train(COLOSSUS))
                 await self.do(gw.train(COLOSSUS))
                 self.troop_data[5] = 1
-
-    async def do_nothing(self):
-        #print('do_nothing')
-        wait = random.randrange(10, 30)/100
-        self.do_something_after = self.time_loop + wait
-
-    # builds 16 workers per nexus up to a maximum of 50
-    async def build_workers(self):
-        #print('build_workers')
-        if (self.units(NEXUS).amount * 16) > self.units(PROBE).amount and \
-            self.units(PROBE).amount < self.MAX_WORKERS:
-            for nexus in self.units(NEXUS).ready.idle:
-                if self.can_afford(PROBE):
-                    await self.do(nexus.train(PROBE))
-
-
+    
+    # action 3
     async def build_pylons(self):
         #print('build_pylons')
         if self.supply_cap != 200 and self.supply_left < 10: 
@@ -547,7 +585,28 @@ class BinaryBot(sc2.BotAI):
                                      self.units(NEXUS).first.position.towards(
                                              self.game_info.map_center, 5))
 
-    
+    # action 4
+    # builds 16 workers per nexus up to a maximum of 50
+    async def build_workers(self):
+        #print('build_workers')
+        if (self.units(NEXUS).amount * 16) > self.units(PROBE).amount and \
+            self.units(PROBE).amount < self.MAX_WORKERS:
+            for nexus in self.units(NEXUS).ready.idle:
+                if self.can_afford(PROBE):
+                    await self.do(nexus.train(PROBE))
+
+    # action 5
+    async def distribute_workers(self):
+        if self.idle_worker_count > 0:
+            self.distribute_workers
+
+    # action 6
+    async def do_nothing(self):
+        #print('do_nothing')
+        wait = random.randrange(10, 30)/100
+        self.do_something_after = self.time_loop + wait
+
+    # action 7
     # Added not already_pending trying to prevent multiple
     # being built right next to each other
     async def expand(self):
@@ -556,6 +615,7 @@ class BinaryBot(sc2.BotAI):
             not self.already_pending(NEXUS):
             await self.expand_now()
 
+    # action 8
     async def offensive_force_buildings(self):
         #print('offensive_force_buildings')
         # Checks for a pylon as an indicator of where to build
@@ -589,6 +649,13 @@ class BinaryBot(sc2.BotAI):
                 if self.can_afford(ROBOTICSBAY) and not \
                     self.already_pending(ROBOTICSBAY):
                     await self.build(ROBOTICSBAY, near=pylon)
+        else:
+            nexuses = self.units(NEXUS).ready
+            if nexuses.exists and not self.already_pending(PYLON):
+                if self.can_afford(PYLON):
+                    await self.build(PYLON, near=
+                                     self.units(NEXUS).first.position.towards(
+                                             self.game_info.map_center, 5))
 
     # self.state.game_loop moves at 22.4 per second on faster game speed
     # Hacky attempt at throttling the bots actions using the time from
@@ -598,7 +665,7 @@ class BinaryBot(sc2.BotAI):
     async def smart_action(self):
         if self.state.game_loop > self.delay_time and \
             self.time_loop > self.do_something_after:
-            
+
             # choses random number which represents the action
             # being carried out on the next step
             # re-initialized each time smart_action
@@ -609,35 +676,62 @@ class BinaryBot(sc2.BotAI):
             # records all of the current stats about the match
             # this data is then fed into the model and it makes
             # a prediction on which move to use next
-            self.supply_data[0] = self.supply_cap
-            self.supply_data[1] = self.supply_army
-            self.supply_data[2] = self.supply_workers
-            self.supply_data[3] = self.units(NEXUS).amount
-            self.supply_data[4] = self.units(PYLON).amount
-            self.supply_data[5] = self.units(ASSIMILATOR).amount
-            self.supply_data[6] = self.units(GATEWAY).amount
-            self.supply_data[7] = self.units(CYBERNETICSCORE).amount
-            self.supply_data[8] = self.units(ROBOTICSFACILITY).amount
-            self.supply_data[9] = self.units(STARGATE).amount
-            self.supply_data[10] = self.units(ROBOTICSBAY).amount
-            self.supply_data[11] = self.state.score.killed_value_structures
-            self.supply_data[12] = self.state.score.killed_value_units
+            self.supply_data[0] = self.state.score.collected_minerals
+            self.supply_data[1] = self.state.score.collected_vespene
+            self.supply_data[2] = self.supply_cap
+            self.supply_data[3] = self.supply_army
+            self.supply_data[4] = self.supply_workers
+            self.supply_data[5] = self.units(NEXUS).amount
+            self.supply_data[6] = self.units(PYLON).amount
+            self.supply_data[7] = self.units(ASSIMILATOR).amount
+            self.supply_data[8] = self.units(GATEWAY).amount
+            self.supply_data[9] = self.units(CYBERNETICSCORE).amount
+            self.supply_data[10] = self.units(ROBOTICSFACILITY).amount
+            self.supply_data[11] = self.units(ROBOTICSBAY).amount
+            self.supply_data[12] = self.state.score.killed_value_structures
+            self.supply_data[13] = self.state.score.killed_value_units
+
+            #print(self.supply_data)
 
             # shape data before scaling
-            x_data = self.supply_data.reshape(1, -1)
+            x_data = self.supply_data.reshape(-1, 1)
+            #print(x_data)
 
-            # scale the data before prediction
-            x_test_scaled = self.x_scaler.fit_transform(x_data)
+            # min/max scale the data
+            x_scaled = self.x_scaler.fit_transform(x_data)
+            #print(x_scaled)
+
+            # shape again before prediction
+            x_shaped_scaled = x_scaled.reshape(1, -1)
+            #print(x_shaped_scaled)
+            
+            # creates a dictionary to store counts of actions
+            self.reset_counts()
             
             # since the predictions are just percentage chances between each of the
             # actions we take the maximum percentage as the action choice.
             # since x_test_scaled is a single row we have to manipulate
             # the shape of the data to something the model is used to seeing.
-            action_choice = np.argmax(self.model.predict(np.array([x_test_scaled,])))
+            model_choice = np.argmax(self.model.predict(np.array([x_shaped_scaled,])))
+
+            # fix for model continuously choosing the same action
+            # if the action is chosen 5 times in a row and two other
+            # random actions have both only been chosen once
+            # a random action is selected and the counts are reset
+            if self.action_count.get(model_choice) > 4 and \
+                self.action_count[random.randrange(0, 9)] == 1 and \
+                self.action_count[random.randrange(0, 9)] == 1:
+                    action_choice = random.randrange(0, 9)
+                    print('random choice', action_choice)
+                    self.reset_counts()
+            else:
+                action_choice = model_choice
+                self.action_count[action_choice] += 1
+                print('model choice', action_choice)
 
             #action_choice = random.randrange(0, 9)
-            self.action_data[action_choice] = 1
-                        
+            #print(self.actions_dict[action_choice])
+
             # appends all supply data to the training_data list
             # then extends that list with the action, troop and outcome data
             # in the last index with -1
