@@ -235,25 +235,7 @@ class BinaryBot(sc2.BotAI):
             8: self.offensive_force_buildings
         }
         
-#        self.action_count = {
-#            0: 1,
-#            1: 1,
-#            2: 1,
-#            3: 1,
-#            4: 1,
-#            5: 1,
-#            6: 1,
-#            7: 1,
-#            8: 1
-#        }
-        
-        
-       
-    # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
-    
-    def reset_counts():
-        global action_count
-        action_count = {
+        self.action_count = {
             0: 1,
             1: 1,
             2: 1,
@@ -264,7 +246,26 @@ class BinaryBot(sc2.BotAI):
             7: 1,
             8: 1
         }
+        
+        
+       
+    # self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
     
+    def reset_counts(self):
+        #global action_count
+        self.action_count = {
+            0: 1,
+            1: 1,
+            2: 1,
+            3: 1,
+            4: 1,
+            5: 1,
+            6: 1,
+            7: 1,
+            8: 1
+        }
+    # creates a dictionary to store counts of actions
+    #reset_counts()
     
     # Create a function to write the result to a text file
     def write_txt(self, result, diff):
@@ -704,9 +705,6 @@ class BinaryBot(sc2.BotAI):
             # shape again before prediction
             x_shaped_scaled = x_scaled.reshape(1, -1)
             #print(x_shaped_scaled)
-            
-            # creates a dictionary to store counts of actions
-            self.reset_counts()
             
             # since the predictions are just percentage chances between each of the
             # actions we take the maximum percentage as the action choice.
