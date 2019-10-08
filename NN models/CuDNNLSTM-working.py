@@ -8,11 +8,13 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Dropout, LSTM, CuDNNLSTM,\
-                                    BatchNormalization, Flatten, GRU, Input,\
-                                    Embedding                                   
+                                    BatchNormalization, Flatten,\
+                                    Embedding, Bidirectional, Attention,\
+                                    TimeDistributed
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint,\
                                               TensorBoard, ReduceLROnPlateau
 from tensorflow.python.keras.optimizers import RMSprop
+from keras.backend.tensorflow_backend import set_session 
 #import keras
 #from keras.layers import Dense, Dropout, Flatten
 #from keras.layers import Conv2D, MaxPooling2D
@@ -31,44 +33,53 @@ import time
 # removes scientific notation from np prints, prints numbers as floats
 np.set_printoptions(suppress=True)
 
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.90)
+sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+
 ###!!! Maybe only keep matches where the bot won, indicating good decision making?
 # path to data
-path = 'C:/botdata/'
+#path = 'G:/botdata/'
+#
+## list of all files
+#files = os.listdir(path)
+#
+## object for single array file, which equals a single game
+##full_array = np.load(path + files[0], allow_pickle=True)
+#
+## column list for all match data
+#cols = ['minerals','gas','supply_cap', 'supply_army', 'supply_workers',
+#        'nexus', 'c_pylons', 'assimilators', 'gateways', 'cybercore', 'robofac',
+#        'stargate', 'robobay', 'k-structures', 'k-units', 'attack',
+#        'assimilators', 'offensive_force', 'b_pylons', 'workers', 'distribute',
+#        'nothing', 'expand', 'buildings', 'ZEALOT', 'STALKER', 'ADEPT',
+#        'IMMORTAL', 'VOIDRAY', 'COLOSSUS', 'difficulty', 'outcome']
+##
+## Single array df
+##full_df = pd.DataFrame(data=full_array,columns=cols)
+#
+## define empty dataframe using columns previously defined
+#full_df = pd.DataFrame(columns=cols)
+#
+## Ultra slow!!!!
+## loads each training data file, creates a df and appends to the original df
+#for file in range(0, len(files)):
+#    print(np.load(path + files[file], allow_pickle=True))
+#    if len(full_df) == 0:
+#        full_df = pd.DataFrame(data=np.load(path + files[file], 
+#                                            allow_pickle=True),columns=cols)
+#    else:
+#        df2 = pd.DataFrame(data=np.load(path + files[file], 
+#                                allow_pickle=True),columns=cols)
+#        full_df = full_df.append(df2)
 
-# list of all files
-files = os.listdir(path)
 
-# object for single array file, which equals a single game
-#full_array = np.load(path + files[0], allow_pickle=True)
 
-# column list for all match data
-cols = ['minerals','gas','supply_cap', 'supply_army', 'supply_workers',
-        'nexus', 'c_pylons', 'assimilators', 'gateways', 'cybercore', 'robofac',
-        'stargate', 'robobay', 'k-structures', 'k-units', 'attack',
-        'assimilators', 'offensive_force', 'b_pylons', 'workers', 'distribute',
-        'nothing', 'expand', 'buildings', 'ZEALOT', 'STALKER', 'ADEPT',
-        'IMMORTAL', 'VOIDRAY', 'COLOSSUS', 'difficulty', 'outcome']
+## setup target names for testing
+#target_names = ['attack', 'assimilators', 'offensive_force', 'b_pylons',
+#                'workers', 'distribute', 'nothing', 'expand', 'buildings']
 
-# Single array df
-#full_df = pd.DataFrame(data=full_array,columns=cols)
-
-# define empty dataframe using columns previously defined
-full_df = pd.DataFrame(columns=cols)
-
-# loads each training data file, creates a df and appends to the original df
-for file in range(0, len(files)):
-    #print(np.load(path + files[file], allow_pickle=True))
-    if len(full_df) == 0:
-        full_df = pd.DataFrame(data=np.load(path + files[file], 
-                                            allow_pickle=True),columns=cols)
-    else:
-        df2 = pd.DataFrame(data=np.load(path + files[file], 
-                                allow_pickle=True),columns=cols)
-        full_df = full_df.append(df2)
-
-# setup target names for testing
-target_names = ['attack', 'assimilators', 'offensive_force', 'b_pylons',
-                'workers', 'distribute', 'nothing', 'expand', 'buildings']
+# full large array of all sub arrays
+test = np.load('G:/botdata/full/training_data.npy')
 
 # setup x and y
 # x will be the supply_data inputs
@@ -76,11 +87,13 @@ target_names = ['attack', 'assimilators', 'offensive_force', 'b_pylons',
 
 # create values, the supply stats
 #df_values = full_df.iloc[:,0:15]
-x_data = full_df.iloc[:,0:15].values
+#x_data = full_df.iloc[:,0:15].values
+x_data = test[:,0:15]
 
 # create targets, the bot choices
 #df_targets = full_df.iloc[:,15:24]
-y_data = full_df.iloc[:,15:24].values
+#y_data = full_df.iloc[:,15:24].values
+y_data = test[:,15:24]
 
 
 # used for a single array load
@@ -160,13 +173,13 @@ def batch_generator(batch_size, sequence_length):
 
 # larger batch size the more is fed to the GPU at once, adjust if there
 # are memory issues
-batch_size = 256
+batch_size = 128
 
 # TODO
 # This probably needs to be variable to account for different number of steps
 # per game due to variable game length
 # length of steps in the first game
-sequence_length = 350
+sequence_length = 200
 
 # create a generator object
 generator = batch_generator(batch_size=batch_size,
@@ -179,30 +192,35 @@ print(x_batch.shape)
 print(y_batch.shape)
 
 # set aside some data for validation purposes
-validation_data = (np.expand_dims(x_test_scaled, axis=0),
-                   np.expand_dims(y_test_scaled, axis=0))
+validation_data = (np.expand_dims(x_test_scaled[0:500], axis=0),
+                   np.expand_dims(y_test_scaled[0:500], axis=0))
 
 # start building the NN model
 # Sequential allows the model to be build one layer at a time
 # with each subsequent layer being added to the first
 model = Sequential()
-model.add(CuDNNLSTM(units=512, return_sequences=True, 
-               input_shape=(None, num_x_signals,)))
+model.add(Bidirectional(CuDNNLSTM(units=20, return_sequences=True, 
+               input_shape=(None, num_x_signals,))))
 
-# Added another LSTM layer
-model.add(CuDNNLSTM(units=512,
-              return_sequences=True))
-#model.add(GRU(units=512,
-#              return_sequences=True,
-#              input_shape=(None, num_x_signals,)))
+#model.add(CuDNNLSTM(units=64, return_sequences=True, 
+#               input_shape=(None, num_x_signals,)))
 
-# Added another dense layer
-model.add(Dense(256, activation='relu'))
+#model.add(Bidirectional(LSTM(64, dropout=0.4, recurrent_dropout=0.4, 
+#                             activation='relu', return_sequences=True)))
+
+#model.add(Bidirectional(CuDNNLSTM(32, return_sequences = True)))
+
+#model.add(Bidirectional(LSTM(64, dropout=0.4, recurrent_dropout=0.4, 
+#                             activation='relu', return_sequences=True)))
+
+#model.add(Bidirectional(CuDNNLSTM(64, return_sequences=True)))
+
 
 # The GRU outputs a batch of sequences of 512 values. 
 # We want to predict 9 output-signals, so we add a fully-connected (or dense) 
 # layer maps 512 values down to only 9 values.
-model.add(Dense(num_y_signals, activation='sigmoid'))
+model.add(TimeDistributed(Dense(num_y_signals, activation='sigmoid')))
+
 # A problem with using the Sigmoid activation function, is that we can now only
 # output values in the same range as the training-data.
 # If new numbers in the training data are higher or lower
@@ -279,10 +297,12 @@ callback_tensorboard = TensorBoard(
                                    write_graph=False)
 
 # setup automatic reduction of learning rate
+# TODO
+#try with patience at 5
 callback_reduce_lr = ReduceLROnPlateau(monitor='val_loss',
                                        factor=0.1,
                                        min_lr=1e-8,
-                                       patience=0,
+                                       patience=5,
                                        verbose=1)
 
 # setup list to hold all callback info
@@ -291,18 +311,21 @@ callbacks = [#callback_early_stopping,
              callback_tensorboard,
              callback_reduce_lr]
 
-timings_list = []
+#timings_list = []
 
 # start timing
-timings_list.append(['Model start:', time.time()])
+#timings_list.append(['Model start:', time.time()])
 
+#validation_data[0].shape
+
+# Run the model for 20 epochs, 100 steps per
 model.fit_generator(generator=generator,
-                    epochs=20,
+                    epochs=200,
                     steps_per_epoch=100,
                     validation_data=validation_data,
                     callbacks=callbacks)
 
-timings_list.append(['Model end:', time.time()])
+#timings_list.append(['Model end:', time.time()])
 
 # load best model
 try:
@@ -317,8 +340,9 @@ path = r'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model//'
 # path plus model and time
 model.save(path+'CuDNNLSTM-{}'.format(str(int(time.time())))+'.h5')
     
-result = model.evaluate(x=np.expand_dims(x_test_scaled, axis=0),
-                        y=np.expand_dims(y_test_scaled, axis=0))
+
+#result = model.evaluate(x=np.expand_dims(x_test_scaled[0:500], axis=0),
+#                        y=np.expand_dims(y_test_scaled[0:500], axis=0))
 
 #def plot_comparison(start_idx, length=100, train=True):
 #    """
