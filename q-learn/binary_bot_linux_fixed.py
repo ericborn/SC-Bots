@@ -108,8 +108,9 @@ class BinaryBot(sc2.BotAI):
         self.MAX_WORKERS = 50
         
         # path to save outcome and difficulty to csv
-        self.csv_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/Q-learn/record.csv'
-        self.text_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/Q-learn/record.txt'
+        #self.csv_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/Q-learn/record.csv'
+        #self.text_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/Q-learn/record.txt'
+        self.text_path = "/home/eric_born85/record.txt"
         
         # Used to slow down the bots actions
         self.do_something_after = 0
