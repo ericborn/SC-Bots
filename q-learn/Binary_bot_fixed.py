@@ -409,13 +409,21 @@ class BinaryBot(sc2.BotAI):
         # currently only queues one unit at a time using gw.train
         # hacky method is just to call it multiple times per troop
         # a better method should be found
-        if unit_choice == 'ZEALOT' and self.can_afford(ZEALOT) and \
+        # if unit_choice == 'ZEALOT' and self.can_afford(ZEALOT) and \
+        # self.supply_left >= 2:
+        #     self.troop_data[0] = 1
+        #     self.action_data[2] = 1
+        #     self.appender()
+        #     for gw in self.units(GATEWAY).ready.idle:
+        #         await self.do(gw.train(ZEALOT)) 
+
+        if unit_choice == 'ZEALOT' and self.can_afford(STALKER) and \
         self.supply_left >= 2:
             self.troop_data[0] = 1
             self.action_data[2] = 1
             self.appender()
             for gw in self.units(GATEWAY).ready.idle:
-                await self.do(gw.train(ZEALOT))  
+                await self.do(gw.train(STALKER))  
 
         elif unit_choice == 'STALKER' and self.can_afford(STALKER) and \
         self.supply_left >= 2:
@@ -423,7 +431,6 @@ class BinaryBot(sc2.BotAI):
             self.action_data[2] = 1
             self.appender()
             for gw in self.units(GATEWAY).ready.idle:
-                await self.do(gw.train(STALKER))
                 await self.do(gw.train(STALKER))
                 await self.do(gw.train(STALKER))
 
@@ -434,8 +441,6 @@ class BinaryBot(sc2.BotAI):
             self.appender()
             for gw in self.units(GATEWAY).ready.idle:
                 await self.do(gw.train(ADEPT))
-                await self.do(gw.train(ADEPT))
-                await self.do(gw.train(ADEPT))
 
         elif unit_choice == 'IMMORTAL' and self.can_afford(IMMORTAL) and \
         self.supply_left >= 4:
@@ -443,8 +448,6 @@ class BinaryBot(sc2.BotAI):
             self.action_data[2] = 1
             self.appender()
             for gw in self.units(ROBOTICSFACILITY).ready.idle:
-                await self.do(gw.train(IMMORTAL))
-                await self.do(gw.train(IMMORTAL))
                 await self.do(gw.train(IMMORTAL))
 
         elif unit_choice == 'VOIDRAY' and self.can_afford(VOIDRAY) and \
@@ -454,18 +457,25 @@ class BinaryBot(sc2.BotAI):
             self.appender()
             for gw in self.units(STARGATE).ready.idle:
                 await self.do(gw.train(VOIDRAY))
-                await self.do(gw.train(VOIDRAY))
-                await self.do(gw.train(VOIDRAY))
 
-        elif unit_choice == 'COLOSSUS' and self.can_afford(COLOSSUS) and \
+        elif unit_choice == 'COLOSSUS' and self.can_afford(VOIDRAY) and \
         self.supply_left >= 6:
             self.action_data[2] = 1
             self.troop_data[5] = 1
             self.appender()
-            for gw in self.units(ROBOTICSFACILITY).ready.idle:
-                await self.do(gw.train(COLOSSUS))
-                await self.do(gw.train(COLOSSUS))
-                await self.do(gw.train(COLOSSUS))
+            for gw in self.units(STARGATE).ready.idle:
+                await self.do(gw.train(VOIDRAY))
+                await self.do(gw.train(VOIDRAY))
+
+        # elif unit_choice == 'COLOSSUS' and self.can_afford(COLOSSUS) and \
+        # self.supply_left >= 6:
+        #     self.action_data[2] = 1
+        #     self.troop_data[5] = 1
+        #     self.appender()
+        #     for gw in self.units(ROBOTICSFACILITY).ready.idle:
+        #         await self.do(gw.train(COLOSSUS))
+        #         await self.do(gw.train(COLOSSUS))
+        #         await self.do(gw.train(COLOSSUS))
         # commented out, was building too many pylons
         #else:
         #    await self.build_pylons()
