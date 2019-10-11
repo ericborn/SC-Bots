@@ -193,8 +193,8 @@ class BinaryBot(sc2.BotAI):
             #self.write_csv(str(-1))
             #self.write_txt(str(-1), diff_dict[diff])
 
-            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
-                    np.array(self.training_data))
+#            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
+#                    np.array(self.training_data))
         
         # Win
         elif result == 'Result.Victory':
@@ -247,8 +247,8 @@ class BinaryBot(sc2.BotAI):
             #self.write_csv(0)
             #self.write_txt(str(0), diff_dict[diff])
             
-            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
-                    np.array(self.training_data))
+#            np.save(r"C:/botdata/{}.npy".format(str(int(time.time()))),
+#                    np.array(self.training_data))
 
     # This is the function steps forward and is called through each frame of the game
     async def on_step(self, iteration):
@@ -283,8 +283,6 @@ class BinaryBot(sc2.BotAI):
         self.supply_data[12] = self.state.score.killed_value_structures
         self.supply_data[13] = self.state.score.killed_value_units
 
-
-
     # attempt to fix workers starting the warp in of a building
     # and not going back to work until its finished.
     # checks for idle workers then calls a distribute_workers
@@ -306,9 +304,11 @@ class BinaryBot(sc2.BotAI):
     # Action 1 - Attack
     async def attack(self):
         # print('attack')
-        attack_amount = random.randrange(8, 10)
-        if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, 
-                               COLOSSUS]).amount > attack_amount:
+        attack_amount = random.randrange(6, 10)
+        # if self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, 
+        #                        COLOSSUS]).amount
+        if len(self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, VOIDRAY, 
+                               COLOSSUS]).idle) > attack_amount:
             self.action_data[0] = 1
             self.appender()
             for s in self.units.of_type([ZEALOT, STALKER, ADEPT, IMMORTAL, 
