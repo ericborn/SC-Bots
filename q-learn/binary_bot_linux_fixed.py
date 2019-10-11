@@ -190,7 +190,7 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)
 
-            self.write_txt(str(-1), 'Medium')
+            #self.write_txt(str(-1), 'Medium')
             #self.write_csv(str(-1))
             #self.write_txt(str(-1), diff_dict[diff])
 
@@ -217,7 +217,7 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)
 
-            self.write_txt(str(-1), 'Medium')
+            #self.write_txt(str(-1), 'Medium')
             #self.write_csv(1)
             #self.write_txt(str(1), diff_dict[diff])
             
@@ -244,7 +244,7 @@ class BinaryBot(sc2.BotAI):
             self.training_data[-1].extend(self.troop_data)
             self.training_data[-1].extend(self.outcome_data)  
 
-            self.write_txt(str(-1), 'Medium')         
+            #self.write_txt(str(-1), 'Medium')         
             #self.write_csv(0)
             #self.write_txt(str(0), diff_dict[diff])
             
