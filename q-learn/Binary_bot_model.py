@@ -200,7 +200,7 @@ class BinaryBot(sc2.BotAI):
         self.x_scaler = MinMaxScaler()
 
         # set the path to the model
-        self.model_path = "C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model/dataCuDNNLSTM-1570312808.h5"
+        self.model_path = 'C:/Users/TomBrody/Desktop/School/767 ML/SC Bot/NN/model/CuDNNLSTM-1571072630.h5'
 
         # used to load a trained model to choose actions instead of random
         self.model = load_model(self.model_path)
@@ -229,7 +229,7 @@ class BinaryBot(sc2.BotAI):
             2: self.build_offensive_force,
             3: self.build_pylons,
             4: self.build_workers,
-            5: self.distribute_workers,
+            5: self.d_distribute_workers,
             6: self.do_nothing,
             7: self.expand,
             8: self.offensive_force_buildings
@@ -379,6 +379,7 @@ class BinaryBot(sc2.BotAI):
         # functions to select next action and send idle workers to a task
         await self.smart_action()
         await self.back_to_work()
+        await self.distribute_workers()
         await self.first_pylon()
 
         # send starting chat message
@@ -415,17 +416,25 @@ class BinaryBot(sc2.BotAI):
     # Does not work on workers who create assimilators since they're
     # being assigned to get gas upon starting the build
     async def back_to_work(self):
-        if self.idle_worker_count > 0:
-            self.distribute_workers
+        #if self.idle_worker_count > 0:
+        self.distribute_workers()
+        #print('distribute')
 
     def find_target(self, state):
-            if len(self.known_enemy_units) > 0:
-                return random.choice(self.known_enemy_units)
-            elif len(self.known_enemy_structures) > 0:
-                return random.choice(self.known_enemy_structures)
-            else:
-                return self.enemy_start_locations[0]
+        return self.enemy_start_locations[0]
                 
+    # seems to send troops to attack but if they start to become attacked
+    # they dont fight back, just running to some location
+    # may be due to attack a building some other troop saw,
+    # not a general attack command toward the buildings
+#    def find_target(self, state):
+#            if len(self.known_enemy_units) > 0:
+#                return random.choice(self.known_enemy_units)
+#            elif len(self.known_enemy_structures) > 0:
+#                return random.choice(self.known_enemy_structures)
+#            else:
+#                return self.enemy_start_locations[0]
+#                
     # Action 0 - Attack
     async def attack(self):
         # print('attack')
@@ -597,9 +606,11 @@ class BinaryBot(sc2.BotAI):
                     await self.do(nexus.train(PROBE))
 
     # action 5
-    async def distribute_workers(self):
+    async def d_distribute_workers(self):
         if self.idle_worker_count > 0:
-            self.distribute_workers
+            print('workers')
+        #self.distribute_workers()
+
 
     # action 6
     async def do_nothing(self):
@@ -664,8 +675,10 @@ class BinaryBot(sc2.BotAI):
     # about 1 move a second. 60-100 APM is average, 200+ is pro
     # https://github.com/deepmind/pysc2/blob/master/docs/environment.md#apm-calculation
     async def smart_action(self):
-        if self.state.game_loop > self.delay_time and \
-            self.time_loop > self.do_something_after:
+#        if self.state.game_loop > self.delay_time and \
+#            self.time_loop > self.do_something_after:
+        if self.state.game_loop > 0 and \
+            self.time_loop > 0:
 
             # choses random number which represents the action
             # being carried out on the next step
@@ -726,7 +739,9 @@ class BinaryBot(sc2.BotAI):
                 action_choice = model_choice
                 self.action_count[action_choice] += 1
                 print('model choice', action_choice)
-
+            
+            #action_choice = model_choice
+            print('model choice', action_choice)
             #action_choice = random.randrange(0, 9)
             #print(self.actions_dict[action_choice])
 
@@ -785,7 +800,7 @@ def main():
     run_game(maps.get("AbyssalReefLE"), [
         Bot(Race.Protoss, BinaryBot()),
         Computer(Race.Terran, Difficulty.Medium)
-        ], realtime=False)
+        ], realtime=True)
 
 if __name__ == '__main__':
     main()
